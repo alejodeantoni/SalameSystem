@@ -4,463 +4,90 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SalameSystem</title>
-
-<!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-
-<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-
 <style>
-  /* ── TOKENS ── */
-  :root {
-    --bg:        #0a0f1e;
-    --surface:   #111827;
-    --surface2:  #1a2236;
-    --border:    #1e3a5f;
-    --accent:    #0ea5e9;
-    --accent2:   #f97316;
-    --good:      #22d3a0;
-    --warn:      #fbbf24;
-    --danger:    #f87171;
-    --text:      #e2e8f0;
-    --muted:     #64748b;
-    --temp-color:#f97316;
-    --hum-color: #38bdf8;
-    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-  }
+:root {
+  --bg:      #0a0f1e;
+  --surface: #111827;
+  --sur2:    #1a2236;
+  --border:  #1e3a5f;
+  --accent:  #0ea5e9;
+  --good:    #22d3a0;
+  --danger:  #f87171;
+  --text:    #e2e8f0;
+  --muted:   #64748b;
+  --orange:  #f97316;
+  --blue:    #38bdf8;
+  --mono:    'JetBrains Mono', monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh}
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+/* HEADER */
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:1.05rem}
+.logo-icon{width:30px;height:30px;background:linear-gradient(135deg,var(--accent),var(--orange));border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px}
+.pill{display:flex;align-items:center;gap:6px;font-size:.72rem;color:var(--muted);background:var(--sur2);padding:4px 10px;border-radius:20px;border:1px solid var(--border)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--muted);transition:background .4s}
+.dot.on{background:var(--good);box-shadow:0 0 6px var(--good);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    min-height: 100vh;
-  }
+/* LAYOUT */
+main{max-width:960px;margin:0 auto;padding:20px 16px;display:grid;gap:14px}
 
-  /* ── HEADER ── */
-  header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 24px;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-weight: 700;
-    font-size: 1.1rem;
-    letter-spacing: -0.02em;
-  }
-  .logo-icon {
-    width: 32px; height: 32px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 16px;
-  }
-  .status-pill {
-    display: flex; align-items: center; gap: 6px;
-    font-size: .75rem; color: var(--muted);
-    background: var(--surface2);
-    padding: 4px 10px;
-    border-radius: 20px;
-    border: 1px solid var(--border);
-  }
-  .dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: var(--muted);
-    transition: background .4s;
-  }
-  .dot.online { background: var(--good); box-shadow: 0 0 6px var(--good); animation: pulse 2s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+/* MÉTRICAS */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.card.temp::before{background:var(--orange)}
+.card.hum::before{background:var(--blue)}
+.card.estufa::before{background:var(--orange)}
+.card.extractor::before{background:var(--blue)}
+.card-label{font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:8px}
+.card-value{font-size:2.6rem;font-weight:800;font-family:var(--mono);line-height:1}
+.card.temp .card-value{color:var(--orange)}
+.card.hum  .card-value{color:var(--blue)}
+.card-sub{margin-top:8px;font-size:.75rem;color:var(--muted)}
+.card-sub b{color:var(--text)}
 
-  /* ── LAYOUT ── */
-  main {
-    max-width: 960px;
-    margin: 0 auto;
-    padding: 24px 16px;
-    display: grid;
-    gap: 16px;
-  }
+/* RELÉS */
+.rele-row{display:flex;align-items:center;justify-content:space-between}
+.rele-name{font-weight:700;font-size:.95rem}
+.rele-desc{font-size:.72rem;color:var(--muted);margin-top:2px}
+.badge{font-size:.68rem;font-weight:700;letter-spacing:.05em;padding:4px 12px;border-radius:20px;background:var(--sur2);color:var(--muted);border:1px solid var(--border);transition:all .3s}
+.badge.on-e{background:rgba(249,115,22,.15);color:var(--orange);border-color:var(--orange)}
+.badge.on-x{background:rgba(56,189,248,.15);color:var(--blue);border-color:var(--blue)}
+.card.rele-on-e{border-color:var(--orange);background:rgba(249,115,22,.04)}
+.card.rele-on-x{border-color:var(--blue);background:rgba(56,189,248,.04)}
 
-  /* ── TARJETAS MÉTRICAS ── */
-  .metrics {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 12px;
-  }
+/* UMBRALES */
+.umbral{font-family:var(--mono);font-size:.88rem;margin-top:6px}
+.umbral .on-label{color:var(--good);font-weight:700}
+.umbral .off-label{color:var(--muted);font-weight:700}
 
-  .metric {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px;
-    position: relative;
-    overflow: hidden;
-    transition: border-color .2s;
-  }
-  .metric::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-  }
-  .metric.temp::before  { background: var(--temp-color); }
-  .metric.hum::before   { background: var(--hum-color); }
-  .metric.rele::before  { background: var(--good); }
-  .metric.pid::before   { background: var(--accent); }
+/* GRÁFICOS */
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px}
+.chart-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.chart-title{font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.tabs{display:flex;gap:4px}
+.tab{background:var(--sur2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:3px 9px;font-size:.7rem;cursor:pointer;transition:all .15s}
+.tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.chart-wrap{position:relative;height:200px}
 
-  .metric-label {
-    font-size: .65rem;
-    text-transform: uppercase;
-    letter-spacing: .1em;
-    color: var(--muted);
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .metric-value {
-    font-size: 2.8rem;
-    font-weight: 800;
-    font-family: var(--font-mono);
-    line-height: 1;
-    letter-spacing: -.03em;
-  }
-  .metric.temp .metric-value { color: var(--temp-color); }
-  .metric.hum  .metric-value { color: var(--hum-color); }
+/* IP */
+.ip-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;font-size:.82rem;color:var(--muted)}
+.ip-val{font-family:var(--mono);color:var(--accent);font-weight:600}
 
-  .metric-sub {
-    margin-top: 8px;
-    font-size: .78rem;
-    color: var(--muted);
-  }
-  .metric-sub span {
-    color: var(--text);
-    font-weight: 600;
-  }
+/* TOAST */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--sur2);border:1px solid var(--border);color:var(--text);padding:9px 18px;border-radius:8px;font-size:.82rem;transition:transform .3s;z-index:999}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.ok{border-color:var(--good);color:var(--good)}
+.toast.err{border-color:var(--danger);color:var(--danger)}
 
-  /* ── RELÉS ── */
-  .reles {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
-  .rele-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 16px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    transition: border-color .3s;
-  }
-  .rele-card.active {
-    border-color: var(--good);
-    background: rgba(34, 211, 160, .05);
-  }
-  .rele-card.active.extractor {
-    border-color: var(--hum-color);
-    background: rgba(56, 189, 248, .05);
-  }
-  .rele-info {}
-  .rele-name { font-weight: 700; font-size: .95rem; }
-  .rele-desc { font-size: .75rem; color: var(--muted); margin-top: 2px; }
-
-  .badge {
-    font-size: .7rem;
-    font-weight: 700;
-    letter-spacing: .05em;
-    padding: 4px 10px;
-    border-radius: 20px;
-    background: var(--surface2);
-    color: var(--muted);
-    border: 1px solid var(--border);
-    transition: all .3s;
-  }
-  .badge.on {
-    background: rgba(34, 211, 160, .15);
-    color: var(--good);
-    border-color: var(--good);
-  }
-  .badge.on.hum {
-    background: rgba(56, 189, 248, .15);
-    color: var(--hum-color);
-    border-color: var(--hum-color);
-  }
-
-  /* ── PID BAR ── */
-  .pid-bar-wrap {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 16px 20px;
-  }
-  .pid-label {
-    font-size: .75rem;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: .08em;
-    margin-bottom: 10px;
-    display: flex;
-    justify-content: space-between;
-  }
-  .pid-label span { color: var(--accent); font-weight: 700; font-family: var(--font-mono); }
-  .bar-track {
-    height: 8px;
-    background: var(--surface2);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-  .bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--accent), var(--temp-color));
-    border-radius: 4px;
-    transition: width .6s ease;
-    width: 0%;
-  }
-
-  /* ── GRÁFICO ── */
-  .chart-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px;
-  }
-  .chart-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 16px;
-  }
-  .chart-title {
-    font-size: .85rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    color: var(--muted);
-  }
-  .range-tabs {
-    display: flex;
-    gap: 4px;
-  }
-  .range-tab {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--muted);
-    border-radius: 6px;
-    padding: 4px 10px;
-    font-size: .72rem;
-    cursor: pointer;
-    transition: all .15s;
-  }
-  .range-tab.active {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
-  }
-  .chart-container { position: relative; height: 220px; }
-
-  /* ── CONFIG PANEL ── */
-  .config-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    overflow: hidden;
-  }
-  .config-header {
-    padding: 14px 20px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    cursor: pointer;
-    user-select: none;
-  }
-  .config-header-title {
-    font-size: .85rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    color: var(--muted);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .chevron { transition: transform .2s; }
-  .chevron.open { transform: rotate(180deg); }
-
-  .config-body {
-    padding: 20px;
-    display: none;
-  }
-  .config-body.open { display: block; }
-
-  .config-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 12px;
-    margin-bottom: 16px;
-  }
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .field label {
-    font-size: .7rem;
-    text-transform: uppercase;
-    letter-spacing: .08em;
-    color: var(--muted);
-  }
-  .field input[type=number], .field input[type=text] {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text);
-    border-radius: 6px;
-    padding: 8px 10px;
-    font-size: .9rem;
-    font-family: var(--font-mono);
-    width: 100%;
-    transition: border-color .2s;
-  }
-  .field input:focus {
-    outline: none;
-    border-color: var(--accent);
-  }
-
-  .section-sub {
-    font-size: .72rem;
-    text-transform: uppercase;
-    letter-spacing: .1em;
-    color: var(--accent);
-    margin: 16px 0 10px;
-    padding-bottom: 6px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .btn-row {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  .btn {
-    padding: 9px 18px;
-    border-radius: 7px;
-    border: none;
-    cursor: pointer;
-    font-size: .85rem;
-    font-weight: 600;
-    transition: all .15s;
-  }
-  .btn-primary {
-    background: var(--accent);
-    color: #fff;
-  }
-  .btn-primary:hover { background: #0284c7; }
-  .btn-danger {
-    background: transparent;
-    border: 1px solid var(--danger);
-    color: var(--danger);
-  }
-  .btn-danger:hover { background: rgba(248,113,113,.1); }
-  .btn-muted {
-    background: var(--surface2);
-    color: var(--muted);
-    border: 1px solid var(--border);
-  }
-
-  /* ── MODO MANUAL ── */
-  .manual-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    background: var(--surface2);
-    border-radius: 8px;
-    margin-top: 12px;
-  }
-  .toggle-wrap { display: flex; align-items: center; gap: 8px; font-size: .85rem; }
-  .toggle {
-    position: relative;
-    width: 40px; height: 22px;
-    cursor: pointer;
-  }
-  .toggle input { opacity: 0; width: 0; height: 0; }
-  .slider {
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 11px;
-    transition: .2s;
-  }
-  .slider:before {
-    content: '';
-    position: absolute;
-    width: 16px; height: 16px;
-    left: 2px; bottom: 2px;
-    background: var(--muted);
-    border-radius: 50%;
-    transition: .2s;
-  }
-  input:checked + .slider { background: var(--accent); border-color: var(--accent); }
-  input:checked + .slider:before { transform: translateX(18px); background: white; }
-
-  /* ── IP DISPLAY ── */
-  .ip-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 14px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: .85rem;
-    color: var(--muted);
-  }
-  .ip-val {
-    font-family: var(--font-mono);
-    color: var(--accent);
-    font-weight: 600;
-  }
-
-  /* ── TOAST ── */
-  .toast {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%) translateY(80px);
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 10px 20px;
-    border-radius: 8px;
-    font-size: .85rem;
-    transition: transform .3s ease;
-    z-index: 999;
-  }
-  .toast.show { transform: translateX(-50%) translateY(0); }
-  .toast.ok   { border-color: var(--good); color: var(--good); }
-  .toast.err  { border-color: var(--danger); color: var(--danger); }
-
-  /* ── RESPONSIVE ── */
-  @media(max-width:500px) {
-    .reles { grid-template-columns: 1fr; }
-    .metric-value { font-size: 2.2rem; }
-  }
+@media(max-width:480px){.grid2{grid-template-columns:1fr}.card-value{font-size:2rem}}
 </style>
 </head>
 <body>
@@ -470,7 +97,7 @@
     <div class="logo-icon">🥩</div>
     <span>SalameSystem</span>
   </div>
-  <div class="status-pill">
+  <div class="pill">
     <div class="dot" id="dot"></div>
     <span id="status-text">Conectando…</span>
   </div>
@@ -478,137 +105,78 @@
 
 <main>
 
-  <!-- MÉTRICAS PRINCIPALES -->
-  <div class="metrics">
-    <div class="metric temp">
-      <div class="metric-label">🌡️ Temperatura</div>
-      <div class="metric-value" id="val-temp">--.-</div>
-      <div class="metric-sub">SP: <span id="sp-temp">--</span>°C</div>
-    </div>
-    <div class="metric hum">
-      <div class="metric-label">💧 Humedad</div>
-      <div class="metric-value" id="val-hum">--.-</div>
-      <div class="metric-sub">SP: <span id="sp-hum">--</span>% ± <span id="hist-hum">--</span>%</div>
-    </div>
-  </div>
-
-  <!-- UMBRALES -->
-  <div class="metrics">
-    <div class="metric temp">
-      <div class="metric-label">🔥 Zona estufa</div>
-      <div style="font-family:var(--font-mono);font-size:1.1rem;font-weight:700;margin:6px 0">
-        <span style="color:var(--accent)">ON</span> &lt; <span id="umbral-t-on">--</span>°C
+  <!-- TEMPERATURA Y HUMEDAD -->
+  <div class="grid2">
+    <div class="card temp">
+      <div class="card-label">🌡️ Temperatura</div>
+      <div class="card-value" id="val-temp">--.-</div>
+      <div class="card-sub">SP: <b id="sp-temp">--</b>°C ± <b id="ht">--</b>°C</div>
+      <div class="umbral">
+        <span class="on-label">ON</span> &lt; <span id="u-t-on">--</span>°C
         &nbsp;·&nbsp;
-        <span style="color:var(--muted)">OFF</span> &gt; <span id="umbral-t-off">--</span>°C
+        <span class="off-label">OFF</span> &gt; <span id="u-t-off">--</span>°C
       </div>
-      <div class="metric-sub">Histéresis ±<span id="hist-temp">--</span>°C</div>
     </div>
-    <div class="metric hum">
-      <div class="metric-label">💨 Zona extractor</div>
-      <div style="font-family:var(--font-mono);font-size:1.1rem;font-weight:700;margin:6px 0">
-        <span style="color:var(--accent)">ON</span> &gt; <span id="umbral-h-on">--</span>%
+    <div class="card hum">
+      <div class="card-label">💧 Humedad</div>
+      <div class="card-value" id="val-hum">--.-</div>
+      <div class="card-sub">SP: <b id="sp-hum">--</b>% ± <b id="hh">--</b>%</div>
+      <div class="umbral">
+        <span class="on-label">ON</span> &gt; <span id="u-h-on">--</span>%
         &nbsp;·&nbsp;
-        <span style="color:var(--muted)">OFF</span> &lt; <span id="umbral-h-off">--</span>%
+        <span class="off-label">OFF</span> &lt; <span id="u-h-off">--</span>%
       </div>
-      <div class="metric-sub">Histéresis ±<span id="hist-hum2">--</span>%</div>
     </div>
   </div>
 
   <!-- RELÉS -->
-  <div class="reles">
-    <div class="rele-card" id="card-estufa">
-      <div class="rele-info">
-        <div class="rele-name">🔥 Estufa</div>
-        <div class="rele-desc">Histéresis temperatura</div>
+  <div class="grid2">
+    <div class="card estufa" id="card-estufa">
+      <div class="rele-row">
+        <div>
+          <div class="rele-name">🔥 Estufa</div>
+          <div class="rele-desc">Histéresis temperatura</div>
+        </div>
+        <div class="badge" id="badge-estufa">OFF</div>
       </div>
-      <div class="badge" id="badge-estufa">OFF</div>
     </div>
-    <div class="rele-card extractor" id="card-extractor">
-      <div class="rele-info">
-        <div class="rele-name">💨 Extractor</div>
-        <div class="rele-desc">Histéresis humedad</div>
+    <div class="card extractor" id="card-extractor">
+      <div class="rele-row">
+        <div>
+          <div class="rele-name">💨 Extractor</div>
+          <div class="rele-desc">Histéresis humedad</div>
+        </div>
+        <div class="badge" id="badge-extractor">OFF</div>
       </div>
-      <div class="badge" id="badge-extractor">OFF</div>
     </div>
   </div>
 
-  <!-- GRÁFICO HISTÓRICO -->
+  <!-- GRÁFICO TEMP/HUM -->
   <div class="chart-card">
     <div class="chart-header">
-      <div class="chart-title">Histórico</div>
-      <div class="range-tabs">
-        <button class="range-tab active" onclick="setRango(30,'this')" data-r="30">30m</button>
-        <button class="range-tab" onclick="setRango(60,'this')" data-r="60">1h</button>
-        <button class="range-tab" onclick="setRango(360,'this')" data-r="360">6h</button>
-        <button class="range-tab" onclick="setRango(1440,'this')" data-r="1440">24h</button>
+      <div class="chart-title">Temperatura y Humedad</div>
+      <div class="tabs">
+        <button class="tab active" data-r="30"  onclick="setRango(30,this)">30m</button>
+        <button class="tab"        data-r="60"  onclick="setRango(60,this)">1h</button>
+        <button class="tab"        data-r="360" onclick="setRango(360,this)">6h</button>
+        <button class="tab"        data-r="1440"onclick="setRango(1440,this)">24h</button>
       </div>
     </div>
-    <div class="chart-container">
-      <canvas id="chart"></canvas>
-    </div>
+    <div class="chart-wrap"><canvas id="chart-th"></canvas></div>
   </div>
 
-  <!-- IP LOCAL -->
+  <!-- GRÁFICO RELÉS -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <div class="chart-title">Historial Estufa y Extractor</div>
+    </div>
+    <div class="chart-wrap"><canvas id="chart-reles"></canvas></div>
+  </div>
+
+  <!-- IP -->
   <div class="ip-card">
     <span>IP del controlador</span>
     <span class="ip-val" id="ip-val">--</span>
-  </div>
-
-  <!-- CONFIG -->
-  <div class="config-card">
-    <div class="config-header" onclick="toggleConfig()">
-      <div class="config-header-title">⚙️ Configuración</div>
-      <svg class="chevron" id="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-    </div>
-    <div class="config-body" id="config-body">
-
-      <div class="section-sub">Setpoints</div>
-      <div class="config-grid">
-        <div class="field">
-          <label>Temp. Objetivo (°C)</label>
-          <input type="number" id="cfg-sp-temp" step="0.5" value="22">
-        </div>
-        <div class="field">
-          <label>Histéresis Temp. (°C)</label>
-          <input type="number" id="cfg-hist-temp" step="0.5" value="1">
-        </div>
-        <div class="field">
-          <label>Hum. Objetivo (%)</label>
-          <input type="number" id="cfg-sp-hum" step="1" value="60">
-        </div>
-        <div class="field">
-          <label>Histéresis Hum. (%)</label>
-          <input type="number" id="cfg-hist-hum" step="0.5" value="5">
-        </div>
-      </div>
-
-
-
-      <div class="section-sub">Modo Manual</div>
-      <div class="manual-row">
-        <label class="toggle-wrap">
-          <label class="toggle">
-            <input type="checkbox" id="chk-manual" onchange="toggleManual()">
-            <span class="slider"></span>
-          </label>
-          Modo Manual
-        </label>
-        <span style="color:var(--muted);font-size:.8rem">Cuando está activo, los relés no responden al PID</span>
-      </div>
-      <div id="manual-controles" style="display:none;margin-top:12px">
-        <div class="btn-row">
-          <button class="btn btn-primary" onclick="setReleManual('estufa',true)">🔥 Estufa ON</button>
-          <button class="btn btn-muted"   onclick="setReleManual('estufa',false)">🔥 Estufa OFF</button>
-          <button class="btn btn-primary" onclick="setReleManual('extractor',true)">💨 Extractor ON</button>
-          <button class="btn btn-muted"   onclick="setReleManual('extractor',false)">💨 Extractor OFF</button>
-        </div>
-      </div>
-
-      <br>
-      <div class="btn-row">
-        <button class="btn btn-primary" onclick="guardarConfig()">💾 Guardar configuración</button>
-      </div>
-    </div>
   </div>
 
 </main>
@@ -616,10 +184,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// ============================================================
-// CONFIGURACIÓN FIREBASE — COMPLETAR CON TUS DATOS
-// ============================================================
-const firebaseConfig = {
+firebase.initializeApp({
   apiKey:            "AIzaSyBU5fxVnZ8HGJwd8coE1M4wj8TLKPUDfIg",
   authDomain:        "salamesystem-2ec66.firebaseapp.com",
   databaseURL:       "https://salamesystem-2ec66-default-rtdb.firebaseio.com",
@@ -627,250 +192,135 @@ const firebaseConfig = {
   storageBucket:     "salamesystem-2ec66.firebasestorage.app",
   messagingSenderId: "542477774980",
   appId:             "1:542477774980:web:ba2bca3520bae1f53dd2d1"
-};
-
-// IP local del controlador (se puede cambiar desde la config)
-
-
-// ============================================================
-firebase.initializeApp(firebaseConfig);
+});
 const db = firebase.database();
 
-// ============================================================
-// CHART
-// ============================================================
 let rangoMin = 30;
-const ctx = document.getElementById('chart').getContext('2d');
-const chart = new Chart(ctx, {
+
+// ── GRÁFICO TEMP/HUM ──
+const chartTH = new Chart(document.getElementById('chart-th').getContext('2d'), {
   type: 'line',
-  data: {
-    datasets: [
-      {
-        label: 'Temperatura (°C)',
-        data: [],
-        borderColor: '#f97316',
-        backgroundColor: 'rgba(249,115,22,.08)',
-        borderWidth: 2,
-        pointRadius: 0,
-        tension: 0.3,
-        fill: true,
-        yAxisID: 'yT'
-      },
-      {
-        label: 'Humedad (%)',
-        data: [],
-        borderColor: '#38bdf8',
-        backgroundColor: 'rgba(56,189,248,.08)',
-        borderWidth: 2,
-        pointRadius: 0,
-        tension: 0.3,
-        fill: true,
-        yAxisID: 'yH'
-      }
-    ]
-  },
+  data: { datasets: [
+    { label:'Temp (°C)', data:[], borderColor:'#f97316', backgroundColor:'rgba(249,115,22,.07)', borderWidth:2, pointRadius:0, tension:0.3, fill:true, yAxisID:'yT' },
+    { label:'Hum (%)',   data:[], borderColor:'#38bdf8', backgroundColor:'rgba(56,189,248,.07)',  borderWidth:2, pointRadius:0, tension:0.3, fill:true, yAxisID:'yH' }
+  ]},
   options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: { mode: 'index', intersect: false },
-    plugins: {
-      legend: {
-        labels: { color: '#94a3b8', boxWidth: 12, padding: 16, font: { size: 11 } }
-      },
-      tooltip: {
-        backgroundColor: '#1a2236',
-        borderColor: '#1e3a5f',
-        borderWidth: 1,
-        titleColor: '#e2e8f0',
-        bodyColor: '#94a3b8'
-      }
-    },
-    scales: {
-      x: {
-        type: 'time',
-        time: { unit: 'minute', displayFormats: { minute: 'HH:mm' } },
-        grid: { color: '#1e3a5f' },
-        ticks: { color: '#64748b', maxTicksLimit: 6 }
-      },
-      yT: {
-        position: 'left',
-        grid: { color: '#1e3a5f' },
-        ticks: { color: '#f97316', callback: v => v + '°' }
-      },
-      yH: {
-        position: 'right',
-        grid: { drawOnChartArea: false },
-        ticks: { color: '#38bdf8', callback: v => v + '%' },
-        min: 0, max: 100
-      }
+    responsive:true, maintainAspectRatio:false,
+    interaction:{ mode:'index', intersect:false },
+    plugins:{ legend:{ labels:{ color:'#94a3b8', boxWidth:12, font:{size:11} } }, tooltip:{ backgroundColor:'#1a2236', borderColor:'#1e3a5f', borderWidth:1, titleColor:'#e2e8f0', bodyColor:'#94a3b8' } },
+    scales:{
+      x:{ type:'time', time:{ unit:'minute', displayFormats:{minute:'HH:mm'} }, grid:{color:'#1e3a5f'}, ticks:{color:'#64748b', maxTicksLimit:6} },
+      yT:{ position:'left',  grid:{color:'#1e3a5f'}, ticks:{color:'#f97316', callback:v=>v+'°'} },
+      yH:{ position:'right', grid:{drawOnChartArea:false}, ticks:{color:'#38bdf8', callback:v=>v+'%'}, min:0, max:100 }
     }
   }
 });
 
-function setRango(min, btn) {
-  rangoMin = min;
-  document.querySelectorAll('.range-tab').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll(`.range-tab[data-r="${min}"]`).forEach(b => b.classList.add('active'));
-  cargarHistorico();
-}
+// ── GRÁFICO RELÉS (escalón) ──
+const chartReles = new Chart(document.getElementById('chart-reles').getContext('2d'), {
+  type: 'line',
+  data: { datasets: [
+    { label:'Estufa',    data:[], borderColor:'#f97316', backgroundColor:'rgba(249,115,22,.15)', borderWidth:2, pointRadius:0, stepped:true, fill:true, yAxisID:'yR' },
+    { label:'Extractor', data:[], borderColor:'#38bdf8', backgroundColor:'rgba(56,189,248,.15)',  borderWidth:2, pointRadius:0, stepped:true, fill:true, yAxisID:'yR' }
+  ]},
+  options: {
+    responsive:true, maintainAspectRatio:false,
+    interaction:{ mode:'index', intersect:false },
+    plugins:{ legend:{ labels:{ color:'#94a3b8', boxWidth:12, font:{size:11} } }, tooltip:{ backgroundColor:'#1a2236', borderColor:'#1e3a5f', borderWidth:1, titleColor:'#e2e8f0', bodyColor:'#94a3b8', callbacks:{ label: ctx => ctx.dataset.label + ': ' + (ctx.parsed.y ? 'ON' : 'OFF') } } },
+    scales:{
+      x:{ type:'time', time:{ unit:'minute', displayFormats:{minute:'HH:mm'} }, grid:{color:'#1e3a5f'}, ticks:{color:'#64748b', maxTicksLimit:6} },
+      yR:{ position:'left', grid:{color:'#1e3a5f'}, min:0, max:1.2, ticks:{ color:'#64748b', callback:v=>v===1?'ON':v===0?'OFF':'' } }
+    }
+  }
+});
 
-// ============================================================
-// FIREBASE — DATOS EN TIEMPO REAL
-// ============================================================
+// ── DATOS EN TIEMPO REAL ──
 db.ref('/datos/actual').on('value', snap => {
   const d = snap.val();
   if (!d) return;
 
-  // Métricas
   document.getElementById('val-temp').textContent = (+d.t).toFixed(1);
   document.getElementById('val-hum').textContent  = (+d.h).toFixed(1);
   document.getElementById('sp-temp').textContent  = d.st;
   document.getElementById('sp-hum').textContent   = d.sh;
-  document.getElementById('hist-hum').textContent = d.hh || '--';
+  document.getElementById('ht').textContent       = d.ht;
+  document.getElementById('hh').textContent       = d.hh;
   document.getElementById('ip-val').textContent   = d.ip || '--';
 
-  // Umbrales de histéresis
-  const ht = +(d.ht || 1);
-  const hh = +(d.hh  || 5);
-  const st = +(d.st || 22);
-  const sh = +(d.sh  || 60);
-  document.getElementById('umbral-t-on').textContent  = (st - ht).toFixed(1);
-  document.getElementById('umbral-t-off').textContent = (st + ht).toFixed(1);
-  document.getElementById('hist-temp').textContent    = ht.toFixed(1);
-  document.getElementById('umbral-h-on').textContent  = (sh + hh).toFixed(1);
-  document.getElementById('umbral-h-off').textContent = (sh - hh).toFixed(1);
-  document.getElementById('hist-hum2').textContent    = hh.toFixed(1);
+  const st=+d.st, ht=+d.ht, sh=+d.sh, hh=+d.hh;
+  document.getElementById('u-t-on').textContent  = (st-ht).toFixed(1);
+  document.getElementById('u-t-off').textContent = (st+ht).toFixed(1);
+  document.getElementById('u-h-on').textContent  = (sh+hh).toFixed(1);
+  document.getElementById('u-h-off').textContent = (sh-hh).toFixed(1);
 
-  // Relés
-  setBadge('estufa',    d.e);
-  setBadge('extractor', d.x);
+  setBadge('estufa',    d.e, 'e');
+  setBadge('extractor', d.x, 'x');
 
-  // Status
-  document.getElementById('dot').className = 'dot online';
+  document.getElementById('dot').className = 'dot on';
   document.getElementById('status-text').textContent = 'En vivo';
-
-  // Sync config fields
-  if (!document.activeElement.matches('input')) {
-    document.getElementById('cfg-sp-temp').value   = d.st || 22;
-    document.getElementById('cfg-hist-temp').value = d.ht     || 1;
-    document.getElementById('cfg-sp-hum').value    = d.sh  || 60;
-    document.getElementById('cfg-hist-hum').value  = d.hh      || 5;
-  }
 });
 
-// ============================================================
-// HISTÓRICO FIREBASE
-// ============================================================
-let histData = [];
+// ── HISTÓRICO ──
+function setRango(min, btn) {
+  rangoMin = min;
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  cargarHistorico();
+}
 
 function cargarHistorico() {
-  const desde = Date.now() - rangoMin * 60 * 1000;
-  // Usamos timestamp guardado en Firebase
-  db.ref('/datos/historico')
-    .orderByChild('timestamp')
-    .limitToLast(500)
-    .once('value', snap => {
-      const raw = [];
-      snap.forEach(child => {
-        const v = child.val();
-        // acepta claves cortas (t/h) y largas (temperatura/humedad)
-        raw.push({
-          t:    v.ts        || v.timestamp || 0,
-          temp: v.t         != null ? v.t : (v.temperatura || 0),
-          hum:  v.h         != null ? v.h : (v.humedad     || 0),
-          e:    v.e         != null ? v.e : (v.estufa       || false),
-          x:    v.x         != null ? v.x : (v.extractor    || false),
-        });
+  const limite = Math.ceil(rangoMin * 6) + 10; // cada 10s → 6 por minuto
+  db.ref('/datos/historico').limitToLast(limite).once('value', snap => {
+    const arr = [];
+    snap.forEach(child => {
+      const v = child.val();
+      arr.push({
+        ts:   v.ts   || 0,
+        temp: v.t    != null ? +v.t : 0,
+        hum:  v.h    != null ? +v.h : 0,
+        e:    v.e    ? 1 : 0,
+        x:    v.x    ? 1 : 0,
       });
-
-      // Normalizar timestamps (si son relativos, usar índice como proxy temporal)
-      const now = Date.now();
-      const arr = raw.slice(-Math.ceil(rangoMin * 3)); // aprox cada 10s
-
-      chart.data.datasets[0].data = arr.map((v, i) => ({
-        x: now - (arr.length - i) * 10000,
-        y: v.temp
-      }));
-      chart.data.datasets[1].data = arr.map((v, i) => ({
-        x: now - (arr.length - i) * 10000,
-        y: v.hum
-      }));
-      chart.update('none');
     });
+
+    // Reconstruir timestamps reales desde el último punto
+    const now = Date.now();
+    const total = arr.length;
+
+    chartTH.data.datasets[0].data = arr.map((v,i) => ({ x: now-(total-i)*10000, y: v.temp }));
+    chartTH.data.datasets[1].data = arr.map((v,i) => ({ x: now-(total-i)*10000, y: v.hum  }));
+    chartTH.update('none');
+
+    chartReles.data.datasets[0].data = arr.map((v,i) => ({ x: now-(total-i)*10000, y: v.e }));
+    chartReles.data.datasets[1].data = arr.map((v,i) => ({ x: now-(total-i)*10000, y: v.x }));
+    chartReles.update('none');
+  });
 }
 
 cargarHistorico();
 setInterval(cargarHistorico, 30000);
 
-// ============================================================
-// CONTROL DESDE LA WEB (via IP local del Wemos)
-// ============================================================
-async function postConfig(payload) {
-  try {
-    // Escribe en /config de Firebase — el Wemos lo lee cada 30s
-    await db.ref('/config').update(payload);
-    return true;
-  } catch(e) {
-    toast('Error al guardar en Firebase', 'err');
-    return false;
-  }
-}
-
-async function guardarConfig() {
-  const ok = await postConfig({
-    st: +document.getElementById('cfg-sp-temp').value,
-    ht:     +document.getElementById('cfg-hist-temp').value,
-    sh:  +document.getElementById('cfg-sp-hum').value,
-    hh:      +document.getElementById('cfg-hist-hum').value,
-  });
-  if (ok) toast('Configuración guardada ✓', 'ok');
-}
-
-async function toggleManual() {
-  const manual = document.getElementById('chk-manual').checked;
-  document.getElementById('manual-controles').style.display = manual ? 'block' : 'none';
-  await postConfig({ man: manual });
-}
-
-async function setReleManual(rele, estado) {
-  const key = rele === 'estufa' ? 'releEstufa' : 'releExtractor';
-  const ok = await postConfig({ [key]: estado });
-  if (ok) toast(`${rele} → ${estado ? 'ON' : 'OFF'}`, 'ok');
-}
-
-// ============================================================
-// UI HELPERS
-// ============================================================
-function setBadge(id, on) {
+// ── UI HELPERS ──
+function setBadge(id, on, tipo) {
   const badge = document.getElementById('badge-' + id);
-  const card  = document.getElementById('card-' + id);
+  const card  = document.getElementById('card-'  + id);
   badge.textContent = on ? 'ON' : 'OFF';
-  badge.className   = 'badge' + (on ? (' on' + (id === 'extractor' ? ' hum' : '')) : '');
-  card.className    = 'rele-card' + (id === 'extractor' ? ' extractor' : '') + (on ? ' active' : '');
+  badge.className   = 'badge' + (on ? ' on-'+tipo : '');
+  card.className    = 'card ' + id + (on ? ' rele-on-'+tipo : '');
 }
 
-function toggleConfig() {
-  const body = document.getElementById('config-body');
-  const chev = document.getElementById('chevron');
-  body.classList.toggle('open');
-  chev.classList.toggle('open');
-}
-
-let toastTimer;
+let toastT;
 function toast(msg, type) {
   const el = document.getElementById('toast');
   el.textContent = msg;
-  el.className = 'toast show ' + (type || '');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+  el.className = 'toast show ' + (type||'');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove('show'), 3000);
 }
 
-
-
-// Detector de desconexión
 setTimeout(() => {
-  if (document.getElementById('dot').className.includes('online')) return;
-  document.getElementById('status-text').textContent = 'Sin datos';
+  if (!document.getElementById('dot').classList.contains('on'))
+    document.getElementById('status-text').textContent = 'Sin datos';
 }, 10000);
 </script>
 </body>
