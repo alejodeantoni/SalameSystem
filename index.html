@@ -582,13 +582,7 @@
         </div>
       </div>
 
-      <div class="section-sub">IP del controlador (LAN)</div>
-      <div class="config-grid">
-        <div class="field" style="grid-column: 1/-1">
-          <label>IP para control directo</label>
-          <input type="text" id="cfg-ip" placeholder="192.168.1.xxx" value="">
-        </div>
-      </div>
+
 
       <div class="section-sub">Modo Manual</div>
       <div class="manual-row">
@@ -636,7 +630,7 @@ const firebaseConfig = {
 };
 
 // IP local del controlador (se puede cambiar desde la config)
-let WEMOS_IP = localStorage.getItem('wemos_ip') || '';
+
 
 // ============================================================
 firebase.initializeApp(firebaseConfig);
@@ -812,21 +806,12 @@ setInterval(cargarHistorico, 30000);
 // CONTROL DESDE LA WEB (via IP local del Wemos)
 // ============================================================
 async function postConfig(payload) {
-  const ip = document.getElementById('cfg-ip').value.trim() || WEMOS_IP;
-  if (!ip) { toast('Ingresá la IP del controlador', 'err'); return false; }
-  WEMOS_IP = ip;
-  localStorage.setItem('wemos_ip', ip);
-
   try {
-    const res = await fetch(`http://${ip}/api/config`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(5000)
-    });
-    return res.ok;
+    // Escribe en /config de Firebase — el Wemos lo lee cada 30s
+    await db.ref('/config').update(payload);
+    return true;
   } catch(e) {
-    toast('No se pudo conectar al controlador', 'err');
+    toast('Error al guardar en Firebase', 'err');
     return false;
   }
 }
@@ -880,8 +865,7 @@ function toast(msg, type) {
   toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
 }
 
-// Cargar IP guardada
-document.getElementById('cfg-ip').value = WEMOS_IP;
+
 
 // Detector de desconexión
 setTimeout(() => {
