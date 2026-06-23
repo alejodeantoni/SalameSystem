@@ -728,18 +728,18 @@ db.ref('/datos/actual').on('value', snap => {
   if (!d) return;
 
   // Métricas
-  document.getElementById('val-temp').textContent = (+d.temperatura).toFixed(1);
-  document.getElementById('val-hum').textContent  = (+d.humedad).toFixed(1);
-  document.getElementById('sp-temp').textContent  = d.setpointTemp;
-  document.getElementById('sp-hum').textContent   = d.setpointHum;
-  document.getElementById('hist-hum').textContent = d.histHum || '--';
+  document.getElementById('val-temp').textContent = (+d.t).toFixed(1);
+  document.getElementById('val-hum').textContent  = (+d.h).toFixed(1);
+  document.getElementById('sp-temp').textContent  = d.st;
+  document.getElementById('sp-hum').textContent   = d.sh;
+  document.getElementById('hist-hum').textContent = d.hh || '--';
   document.getElementById('ip-val').textContent   = d.ip || '--';
 
   // Umbrales de histéresis
-  const ht = +(d.histTemp || 1);
-  const hh = +(d.histHum  || 5);
-  const st = +(d.setpointTemp || 22);
-  const sh = +(d.setpointHum  || 60);
+  const ht = +(d.ht || 1);
+  const hh = +(d.hh  || 5);
+  const st = +(d.st || 22);
+  const sh = +(d.sh  || 60);
   document.getElementById('umbral-t-on').textContent  = (st - ht).toFixed(1);
   document.getElementById('umbral-t-off').textContent = (st + ht).toFixed(1);
   document.getElementById('hist-temp').textContent    = ht.toFixed(1);
@@ -748,8 +748,8 @@ db.ref('/datos/actual').on('value', snap => {
   document.getElementById('hist-hum2').textContent    = hh.toFixed(1);
 
   // Relés
-  setBadge('estufa',    d.estufa);
-  setBadge('extractor', d.extractor);
+  setBadge('estufa',    d.e);
+  setBadge('extractor', d.x);
 
   // Status
   document.getElementById('dot').className = 'dot online';
@@ -757,10 +757,10 @@ db.ref('/datos/actual').on('value', snap => {
 
   // Sync config fields
   if (!document.activeElement.matches('input')) {
-    document.getElementById('cfg-sp-temp').value   = d.setpointTemp || 22;
-    document.getElementById('cfg-hist-temp').value = d.histTemp     || 1;
-    document.getElementById('cfg-sp-hum').value    = d.setpointHum  || 60;
-    document.getElementById('cfg-hist-hum').value  = d.histHum      || 5;
+    document.getElementById('cfg-sp-temp').value   = d.st || 22;
+    document.getElementById('cfg-hist-temp').value = d.ht     || 1;
+    document.getElementById('cfg-sp-hum').value    = d.sh  || 60;
+    document.getElementById('cfg-hist-hum').value  = d.hh      || 5;
   }
 });
 
@@ -779,8 +779,14 @@ function cargarHistorico() {
       const raw = [];
       snap.forEach(child => {
         const v = child.val();
-        // timestamp puede ser millis del arduino (relativo) o Unix (si lo configurás con NTP)
-        raw.push({ t: v.timestamp, temp: v.temperatura, hum: v.humedad });
+        // acepta claves cortas (t/h) y largas (temperatura/humedad)
+        raw.push({
+          t:    v.ts        || v.timestamp || 0,
+          temp: v.t         != null ? v.t : (v.temperatura || 0),
+          hum:  v.h         != null ? v.h : (v.humedad     || 0),
+          e:    v.e         != null ? v.e : (v.estufa       || false),
+          x:    v.x         != null ? v.x : (v.extractor    || false),
+        });
       });
 
       // Normalizar timestamps (si son relativos, usar índice como proxy temporal)
@@ -827,10 +833,10 @@ async function postConfig(payload) {
 
 async function guardarConfig() {
   const ok = await postConfig({
-    setpointTemp: +document.getElementById('cfg-sp-temp').value,
-    histTemp:     +document.getElementById('cfg-hist-temp').value,
-    setpointHum:  +document.getElementById('cfg-sp-hum').value,
-    histHum:      +document.getElementById('cfg-hist-hum').value,
+    st: +document.getElementById('cfg-sp-temp').value,
+    ht:     +document.getElementById('cfg-hist-temp').value,
+    sh:  +document.getElementById('cfg-sp-hum').value,
+    hh:      +document.getElementById('cfg-hist-hum').value,
   });
   if (ok) toast('Configuración guardada ✓', 'ok');
 }
@@ -838,7 +844,7 @@ async function guardarConfig() {
 async function toggleManual() {
   const manual = document.getElementById('chk-manual').checked;
   document.getElementById('manual-controles').style.display = manual ? 'block' : 'none';
-  await postConfig({ modoManual: manual });
+  await postConfig({ man: manual });
 }
 
 async function setReleManual(rele, estado) {
