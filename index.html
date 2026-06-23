@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SalameSystem</title>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+<style>
+  /* ── TOKENS ── */
+  :root {
+    --bg:        #0a0f1e;
+    --surface:   #111827;
+    --surface2:  #1a2236;
+    --border:    #1e3a5f;
+    --accent:    #0ea5e9;
+    --accent2:   #f97316;
+    --good:      #22d3a0;
+    --warn:      #fbbf24;
+    --danger:    #f87171;
+    --text:      #e2e8f0;
+    --muted:     #64748b;
+    --temp-color:#f97316;
+    --hum-color: #38bdf8;
+    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    letter-spacing: -0.02em;
+  }
+  .logo-icon {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .status-pill {
+    display: flex; align-items: center; gap: 6px;
+    font-size: .75rem; color: var(--muted);
+    background: var(--surface2);
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+  }
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background .4s;
+  }
+  .dot.online { background: var(--good); box-shadow: 0 0 6px var(--good); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+  /* ── LAYOUT ── */
+  main {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 24px 16px;
+    display: grid;
+    gap: 16px;
+  }
+
+  /* ── TARJETAS MÉTRICAS ── */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+  }
+
+  .metric {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .2s;
+  }
+  .metric::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .metric.temp::before  { background: var(--temp-color); }
+  .metric.hum::before   { background: var(--hum-color); }
+  .metric.rele::before  { background: var(--good); }
+  .metric.pid::before   { background: var(--accent); }
+
+  .metric-label {
+    font-size: .65rem;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--muted);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .metric-value {
+    font-size: 2.8rem;
+    font-weight: 800;
+    font-family: var(--font-mono);
+    line-height: 1;
+    letter-spacing: -.03em;
+  }
+  .metric.temp .metric-value { color: var(--temp-color); }
+  .metric.hum  .metric-value { color: var(--hum-color); }
+
+  .metric-sub {
+    margin-top: 8px;
+    font-size: .78rem;
+    color: var(--muted);
+  }
+  .metric-sub span {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  /* ── RELÉS ── */
+  .reles {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .rele-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: border-color .3s;
+  }
+  .rele-card.active {
+    border-color: var(--good);
+    background: rgba(34, 211, 160, .05);
+  }
+  .rele-card.active.extractor {
+    border-color: var(--hum-color);
+    background: rgba(56, 189, 248, .05);
+  }
+  .rele-info {}
+  .rele-name { font-weight: 700; font-size: .95rem; }
+  .rele-desc { font-size: .75rem; color: var(--muted); margin-top: 2px; }
+
+  .badge {
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .05em;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: var(--surface2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    transition: all .3s;
+  }
+  .badge.on {
+    background: rgba(34, 211, 160, .15);
+    color: var(--good);
+    border-color: var(--good);
+  }
+  .badge.on.hum {
+    background: rgba(56, 189, 248, .15);
+    color: var(--hum-color);
+    border-color: var(--hum-color);
+  }
+
+  /* ── PID BAR ── */
+  .pid-bar-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+  }
+  .pid-label {
+    font-size: .75rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .pid-label span { color: var(--accent); font-weight: 700; font-family: var(--font-mono); }
+  .bar-track {
+    height: 8px;
+    background: var(--surface2);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--temp-color));
+    border-radius: 4px;
+    transition: width .6s ease;
+    width: 0%;
+  }
+
+  /* ── GRÁFICO ── */
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .chart-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .chart-title {
+    font-size: .85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--muted);
+  }
+  .range-tabs {
+    display: flex;
+    gap: 4px;
+  }
+  .range-tab {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: .72rem;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .range-tab.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .chart-container { position: relative; height: 220px; }
+
+  /* ── CONFIG PANEL ── */
+  .config-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .config-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+  }
+  .config-header-title {
+    font-size: .85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .chevron { transition: transform .2s; }
+  .chevron.open { transform: rotate(180deg); }
+
+  .config-body {
+    padding: 20px;
+    display: none;
+  }
+  .config-body.open { display: block; }
+
+  .config-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .field label {
+    font-size: .7rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--muted);
+  }
+  .field input[type=number], .field input[type=text] {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: .9rem;
+    font-family: var(--font-mono);
+    width: 100%;
+    transition: border-color .2s;
+  }
+  .field input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .section-sub {
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--accent);
+    margin: 16px 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    padding: 9px 18px;
+    border-radius: 7px;
+    border: none;
+    cursor: pointer;
+    font-size: .85rem;
+    font-weight: 600;
+    transition: all .15s;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover { background: #0284c7; }
+  .btn-danger {
+    background: transparent;
+    border: 1px solid var(--danger);
+    color: var(--danger);
+  }
+  .btn-danger:hover { background: rgba(248,113,113,.1); }
+  .btn-muted {
+    background: var(--surface2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+
+  /* ── MODO MANUAL ── */
+  .manual-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--surface2);
+    border-radius: 8px;
+    margin-top: 12px;
+  }
+  .toggle-wrap { display: flex; align-items: center; gap: 8px; font-size: .85rem; }
+  .toggle {
+    position: relative;
+    width: 40px; height: 22px;
+    cursor: pointer;
+  }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    transition: .2s;
+  }
+  .slider:before {
+    content: '';
+    position: absolute;
+    width: 16px; height: 16px;
+    left: 2px; bottom: 2px;
+    background: var(--muted);
+    border-radius: 50%;
+    transition: .2s;
+  }
+  input:checked + .slider { background: var(--accent); border-color: var(--accent); }
+  input:checked + .slider:before { transform: translateX(18px); background: white; }
+
+  /* ── IP DISPLAY ── */
+  .ip-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: .85rem;
+    color: var(--muted);
+  }
+  .ip-val {
+    font-family: var(--font-mono);
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: .85rem;
+    transition: transform .3s ease;
+    z-index: 999;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.ok   { border-color: var(--good); color: var(--good); }
+  .toast.err  { border-color: var(--danger); color: var(--danger); }
+
+  /* ── RESPONSIVE ── */
+  @media(max-width:500px) {
+    .reles { grid-template-columns: 1fr; }
+    .metric-value { font-size: 2.2rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🥩</div>
+    <span>SalameSystem</span>
+  </div>
+  <div class="status-pill">
+    <div class="dot" id="dot"></div>
+    <span id="status-text">Conectando…</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- MÉTRICAS PRINCIPALES -->
+  <div class="metrics">
+    <div class="metric temp">
+      <div class="metric-label">🌡️ Temperatura</div>
+      <div class="metric-value" id="val-temp">--.-</div>
+      <div class="metric-sub">SP: <span id="sp-temp">--</span>°C</div>
+    </div>
+    <div class="metric hum">
+      <div class="metric-label">💧 Humedad</div>
+      <div class="metric-value" id="val-hum">--.-</div>
+      <div class="metric-sub">SP: <span id="sp-hum">--</span>% ± <span id="hist-hum">--</span>%</div>
+    </div>
+  </div>
+
+  <!-- UMBRALES -->
+  <div class="metrics">
+    <div class="metric temp">
+      <div class="metric-label">🔥 Zona estufa</div>
+      <div style="font-family:var(--font-mono);font-size:1.1rem;font-weight:700;margin:6px 0">
+        <span style="color:var(--accent)">ON</span> &lt; <span id="umbral-t-on">--</span>°C
+        &nbsp;·&nbsp;
+        <span style="color:var(--muted)">OFF</span> &gt; <span id="umbral-t-off">--</span>°C
+      </div>
+      <div class="metric-sub">Histéresis ±<span id="hist-temp">--</span>°C</div>
+    </div>
+    <div class="metric hum">
+      <div class="metric-label">💨 Zona extractor</div>
+      <div style="font-family:var(--font-mono);font-size:1.1rem;font-weight:700;margin:6px 0">
+        <span style="color:var(--accent)">ON</span> &gt; <span id="umbral-h-on">--</span>%
+        &nbsp;·&nbsp;
+        <span style="color:var(--muted)">OFF</span> &lt; <span id="umbral-h-off">--</span>%
+      </div>
+      <div class="metric-sub">Histéresis ±<span id="hist-hum2">--</span>%</div>
+    </div>
+  </div>
+
+  <!-- RELÉS -->
+  <div class="reles">
+    <div class="rele-card" id="card-estufa">
+      <div class="rele-info">
+        <div class="rele-name">🔥 Estufa</div>
+        <div class="rele-desc">Control PID temperatura</div>
+      </div>
+      <div class="badge" id="badge-estufa">OFF</div>
+    </div>
+    <div class="rele-card extractor" id="card-extractor">
+      <div class="rele-info">
+        <div class="rele-name">💨 Extractor</div>
+        <div class="rele-desc">Histéresis humedad</div>
+      </div>
+      <div class="badge" id="badge-extractor">OFF</div>
+    </div>
+  </div>
+
+  <!-- GRÁFICO HISTÓRICO -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <div class="chart-title">Histórico</div>
+      <div class="range-tabs">
+        <button class="range-tab active" onclick="setRango(30,'this')" data-r="30">30m</button>
+        <button class="range-tab" onclick="setRango(60,'this')" data-r="60">1h</button>
+        <button class="range-tab" onclick="setRango(360,'this')" data-r="360">6h</button>
+        <button class="range-tab" onclick="setRango(1440,'this')" data-r="1440">24h</button>
+      </div>
+    </div>
+    <div class="chart-container">
+      <canvas id="chart"></canvas>
+    </div>
+  </div>
+
+  <!-- IP LOCAL -->
+  <div class="ip-card">
+    <span>IP del controlador</span>
+    <span class="ip-val" id="ip-val">--</span>
+  </div>
+
+  <!-- CONFIG -->
+  <div class="config-card">
+    <div class="config-header" onclick="toggleConfig()">
+      <div class="config-header-title">⚙️ Configuración</div>
+      <svg class="chevron" id="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="config-body" id="config-body">
+
+      <div class="section-sub">Setpoints</div>
+      <div class="config-grid">
+        <div class="field">
+          <label>Temp. Objetivo (°C)</label>
+          <input type="number" id="cfg-sp-temp" step="0.5" value="22">
+        </div>
+        <div class="field">
+          <label>Histéresis Temp. (°C)</label>
+          <input type="number" id="cfg-hist-temp" step="0.5" value="1">
+        </div>
+        <div class="field">
+          <label>Hum. Objetivo (%)</label>
+          <input type="number" id="cfg-sp-hum" step="1" value="60">
+        </div>
+        <div class="field">
+          <label>Histéresis Hum. (%)</label>
+          <input type="number" id="cfg-hist-hum" step="0.5" value="5">
+        </div>
+      </div>
+
+      <div class="section-sub">IP del controlador (LAN)</div>
+      <div class="config-grid">
+        <div class="field" style="grid-column: 1/-1">
+          <label>IP para control directo</label>
+          <input type="text" id="cfg-ip" placeholder="192.168.1.xxx" value="">
+        </div>
+      </div>
+
+      <div class="section-sub">Modo Manual</div>
+      <div class="manual-row">
+        <label class="toggle-wrap">
+          <label class="toggle">
+            <input type="checkbox" id="chk-manual" onchange="toggleManual()">
+            <span class="slider"></span>
+          </label>
+          Modo Manual
+        </label>
+        <span style="color:var(--muted);font-size:.8rem">Cuando está activo, los relés no responden al PID</span>
+      </div>
+      <div id="manual-controles" style="display:none;margin-top:12px">
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="setReleManual('estufa',true)">🔥 Estufa ON</button>
+          <button class="btn btn-muted"   onclick="setReleManual('estufa',false)">🔥 Estufa OFF</button>
+          <button class="btn btn-primary" onclick="setReleManual('extractor',true)">💨 Extractor ON</button>
+          <button class="btn btn-muted"   onclick="setReleManual('extractor',false)">💨 Extractor OFF</button>
+        </div>
+      </div>
+
+      <br>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="guardarConfig()">💾 Guardar configuración</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// CONFIGURACIÓN FIREBASE — COMPLETAR CON TUS DATOS
+// ============================================================
+const firebaseConfig = {
+  apiKey:            "AIzaSyBU5fxVnZ8HGJwd8coE1M4wj8TLKPUDfIg",
+  authDomain:        "salamesystem-2ec66.firebaseapp.com",
+  databaseURL:       "https://salamesystem-2ec66-default-rtdb.firebaseio.com",
+  projectId:         "salamesystem-2ec66",
+  storageBucket:     "salamesystem-2ec66.firebasestorage.app",
+  messagingSenderId: "542477774980",
+  appId:             "1:542477774980:web:ba2bca3520bae1f53dd2d1"
+};
+
+// IP local del controlador (se puede cambiar desde la config)
+let WEMOS_IP = localStorage.getItem('wemos_ip') || '';
+
+// ============================================================
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// ============================================================
+// CHART
+// ============================================================
+let rangoMin = 30;
+const ctx = document.getElementById('chart').getContext('2d');
+const chart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    datasets: [
+      {
+        label: 'Temperatura (°C)',
+        data: [],
+        borderColor: '#f97316',
+        backgroundColor: 'rgba(249,115,22,.08)',
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.3,
+        fill: true,
+        yAxisID: 'yT'
+      },
+      {
+        label: 'Humedad (%)',
+        data: [],
+        borderColor: '#38bdf8',
+        backgroundColor: 'rgba(56,189,248,.08)',
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.3,
+        fill: true,
+        yAxisID: 'yH'
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: {
+        labels: { color: '#94a3b8', boxWidth: 12, padding: 16, font: { size: 11 } }
+      },
+      tooltip: {
+        backgroundColor: '#1a2236',
+        borderColor: '#1e3a5f',
+        borderWidth: 1,
+        titleColor: '#e2e8f0',
+        bodyColor: '#94a3b8'
+      }
+    },
+    scales: {
+      x: {
+        type: 'time',
+        time: { unit: 'minute', displayFormats: { minute: 'HH:mm' } },
+        grid: { color: '#1e3a5f' },
+        ticks: { color: '#64748b', maxTicksLimit: 6 }
+      },
+      yT: {
+        position: 'left',
+        grid: { color: '#1e3a5f' },
+        ticks: { color: '#f97316', callback: v => v + '°' }
+      },
+      yH: {
+        position: 'right',
+        grid: { drawOnChartArea: false },
+        ticks: { color: '#38bdf8', callback: v => v + '%' },
+        min: 0, max: 100
+      }
+    }
+  }
+});
+
+function setRango(min, btn) {
+  rangoMin = min;
+  document.querySelectorAll('.range-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll(`.range-tab[data-r="${min}"]`).forEach(b => b.classList.add('active'));
+  cargarHistorico();
+}
+
+// ============================================================
+// FIREBASE — DATOS EN TIEMPO REAL
+// ============================================================
+db.ref('/datos/actual').on('value', snap => {
+  const d = snap.val();
+  if (!d) return;
+
+  // Métricas
+  document.getElementById('val-temp').textContent = (+d.temperatura).toFixed(1);
+  document.getElementById('val-hum').textContent  = (+d.humedad).toFixed(1);
+  document.getElementById('sp-temp').textContent  = d.setpointTemp;
+  document.getElementById('sp-hum').textContent   = d.setpointHum;
+  document.getElementById('hist-hum').textContent = d.histHum || '--';
+  document.getElementById('ip-val').textContent   = d.ip || '--';
+
+  // Umbrales de histéresis
+  const ht = +(d.histTemp || 1);
+  const hh = +(d.histHum  || 5);
+  const st = +(d.setpointTemp || 22);
+  const sh = +(d.setpointHum  || 60);
+  document.getElementById('umbral-t-on').textContent  = (st - ht).toFixed(1);
+  document.getElementById('umbral-t-off').textContent = (st + ht).toFixed(1);
+  document.getElementById('hist-temp').textContent    = ht.toFixed(1);
+  document.getElementById('umbral-h-on').textContent  = (sh + hh).toFixed(1);
+  document.getElementById('umbral-h-off').textContent = (sh - hh).toFixed(1);
+  document.getElementById('hist-hum2').textContent    = hh.toFixed(1);
+
+  // Relés
+  setBadge('estufa',    d.estufa);
+  setBadge('extractor', d.extractor);
+
+  // Status
+  document.getElementById('dot').className = 'dot online';
+  document.getElementById('status-text').textContent = 'En vivo';
+
+  // Sync config fields
+  if (!document.activeElement.matches('input')) {
+    document.getElementById('cfg-sp-temp').value   = d.setpointTemp || 22;
+    document.getElementById('cfg-hist-temp').value = d.histTemp     || 1;
+    document.getElementById('cfg-sp-hum').value    = d.setpointHum  || 60;
+    document.getElementById('cfg-hist-hum').value  = d.histHum      || 5;
+  }
+});
+
+// ============================================================
+// HISTÓRICO FIREBASE
+// ============================================================
+let histData = [];
+
+function cargarHistorico() {
+  const desde = Date.now() - rangoMin * 60 * 1000;
+  // Usamos timestamp guardado en Firebase
+  db.ref('/datos/historico')
+    .orderByChild('timestamp')
+    .limitToLast(500)
+    .once('value', snap => {
+      const raw = [];
+      snap.forEach(child => {
+        const v = child.val();
+        // timestamp puede ser millis del arduino (relativo) o Unix (si lo configurás con NTP)
+        raw.push({ t: v.timestamp, temp: v.temperatura, hum: v.humedad });
+      });
+
+      // Normalizar timestamps (si son relativos, usar índice como proxy temporal)
+      const now = Date.now();
+      const arr = raw.slice(-Math.ceil(rangoMin * 3)); // aprox cada 10s
+
+      chart.data.datasets[0].data = arr.map((v, i) => ({
+        x: now - (arr.length - i) * 10000,
+        y: v.temp
+      }));
+      chart.data.datasets[1].data = arr.map((v, i) => ({
+        x: now - (arr.length - i) * 10000,
+        y: v.hum
+      }));
+      chart.update('none');
+    });
+}
+
+cargarHistorico();
+setInterval(cargarHistorico, 30000);
+
+// ============================================================
+// CONTROL DESDE LA WEB (via IP local del Wemos)
+// ============================================================
+async function postConfig(payload) {
+  const ip = document.getElementById('cfg-ip').value.trim() || WEMOS_IP;
+  if (!ip) { toast('Ingresá la IP del controlador', 'err'); return false; }
+  WEMOS_IP = ip;
+  localStorage.setItem('wemos_ip', ip);
+
+  try {
+    const res = await fetch(`http://${ip}/api/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(5000)
+    });
+    return res.ok;
+  } catch(e) {
+    toast('No se pudo conectar al controlador', 'err');
+    return false;
+  }
+}
+
+async function guardarConfig() {
+  const ok = await postConfig({
+    setpointTemp: +document.getElementById('cfg-sp-temp').value,
+    histTemp:     +document.getElementById('cfg-hist-temp').value,
+    setpointHum:  +document.getElementById('cfg-sp-hum').value,
+    histHum:      +document.getElementById('cfg-hist-hum').value,
+  });
+  if (ok) toast('Configuración guardada ✓', 'ok');
+}
+
+async function toggleManual() {
+  const manual = document.getElementById('chk-manual').checked;
+  document.getElementById('manual-controles').style.display = manual ? 'block' : 'none';
+  await postConfig({ modoManual: manual });
+}
+
+async function setReleManual(rele, estado) {
+  const key = rele === 'estufa' ? 'releEstufa' : 'releExtractor';
+  const ok = await postConfig({ [key]: estado });
+  if (ok) toast(`${rele} → ${estado ? 'ON' : 'OFF'}`, 'ok');
+}
+
+// ============================================================
+// UI HELPERS
+// ============================================================
+function setBadge(id, on) {
+  const badge = document.getElementById('badge-' + id);
+  const card  = document.getElementById('card-' + id);
+  badge.textContent = on ? 'ON' : 'OFF';
+  badge.className   = 'badge' + (on ? (' on' + (id === 'extractor' ? ' hum' : '')) : '');
+  card.className    = 'rele-card' + (id === 'extractor' ? ' extractor' : '') + (on ? ' active' : '');
+}
+
+function toggleConfig() {
+  const body = document.getElementById('config-body');
+  const chev = document.getElementById('chevron');
+  body.classList.toggle('open');
+  chev.classList.toggle('open');
+}
+
+let toastTimer;
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + (type || '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// Cargar IP guardada
+document.getElementById('cfg-ip').value = WEMOS_IP;
+
+// Detector de desconexión
+setTimeout(() => {
+  if (document.getElementById('dot').className.includes('online')) return;
+  document.getElementById('status-text').textContent = 'Sin datos';
+}, 10000);
+</script>
+</body>
+</html>
