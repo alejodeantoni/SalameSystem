@@ -334,15 +334,19 @@ function actualizarFase(fase, horas) {
 }
 
 async function avanzarFase() {
+  // Leer fase actual de Firebase y calcular la siguiente
+  const snap = await db.ref('/datos/actual/fase').once('value');
+  const faseActual = snap.val() || 1;
+  const nuevaFase  = faseActual === 1 ? 2 : 1;
+
+  if (!confirm('¿Pasar a Fase ' + nuevaFase + ' (' + (nuevaFase===1?'Estufado':'Curado') + ')?')) return;
+
   try {
-    const res  = await fetch(API + '/fase', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fase: 0 })  // la API calcula la siguiente
-    });
-    if (!res.ok) throw new Error('Error ' + res.status);
+    // Escribir directo en Firebase — el Wemos lo lee en 30s
+    await db.ref('/control/fase').set(nuevaFase);
+    toast('Fase ' + nuevaFase + ' activada — el controlador actualiza en 30s', 'ok');
   } catch(e) {
-    alert('No se pudo cambiar la fase: ' + e.message);
+    toast('Error: ' + e.message, 'err');
   }
 }
 
