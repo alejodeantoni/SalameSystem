@@ -111,7 +111,10 @@ main{max-width:960px;margin:0 auto;padding:20px 16px;display:grid;gap:14px}
 <header>
   <div class="logo">
     <div class="logo-icon">🥩</div>
-    <span>SalameSystem</span>
+    <div>
+      <div>SalameSystem</div>
+      <div style="font-size:.6rem;font-weight:400;color:var(--muted);letter-spacing:.05em">v9.0 · Alejo De Antoni</div>
+    </div>
   </div>
   <div class="pill">
     <div class="dot" id="dot"></div>
@@ -195,18 +198,28 @@ main{max-width:960px;margin:0 auto;padding:20px 16px;display:grid;gap:14px}
     </div>
   </div>
 
-  <!-- GRÁFICO TEMP/HUM -->
+  <!-- SELECTOR DE RANGO (compartido) -->
+  <div style="display:flex;justify-content:flex-end;gap:4px">
+    <button class="tab active" data-r="30"   onclick="setRango(30,this)">30m</button>
+    <button class="tab"        data-r="60"   onclick="setRango(60,this)">1h</button>
+    <button class="tab"        data-r="360"  onclick="setRango(360,this)">6h</button>
+    <button class="tab"        data-r="1440" onclick="setRango(1440,this)">24h</button>
+  </div>
+
+  <!-- GRÁFICO TEMPERATURA -->
   <div class="chart-card">
     <div class="chart-header">
-      <div class="chart-title">Temperatura y Humedad</div>
-      <div class="tabs">
-        <button class="tab active" data-r="30"  onclick="setRango(30,this)">30m</button>
-        <button class="tab"        data-r="60"  onclick="setRango(60,this)">1h</button>
-        <button class="tab"        data-r="360" onclick="setRango(360,this)">6h</button>
-        <button class="tab"        data-r="1440"onclick="setRango(1440,this)">24h</button>
-      </div>
+      <div class="chart-title" style="color:var(--orange)">🌡️ Temperatura</div>
     </div>
-    <div class="chart-wrap"><canvas id="chart-th"></canvas></div>
+    <div class="chart-wrap"><canvas id="chart-temp"></canvas></div>
+  </div>
+
+  <!-- GRÁFICO HUMEDAD -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <div class="chart-title" style="color:var(--blue)">💧 Humedad</div>
+    </div>
+    <div class="chart-wrap"><canvas id="chart-hum"></canvas></div>
   </div>
 
   <!-- GRÁFICO RELÉS -->
@@ -273,23 +286,43 @@ let rangoMin = 30;
 let ultimoTs  = 0;
 let timerStatus;
 
-// ── GRÁFICO TEMP/HUM ──
-const chartTH = new Chart(document.getElementById('chart-th').getContext('2d'), {
-  type: 'line',
-  data: { datasets: [
-    { label:'Temp (°C)', data:[], borderColor:'#f97316', backgroundColor:'rgba(249,115,22,.07)', borderWidth:2, pointRadius:0, tension:0.3, fill:true, yAxisID:'yT' },
-    { label:'Hum (%)',   data:[], borderColor:'#38bdf8', backgroundColor:'rgba(56,189,248,.07)',  borderWidth:2, pointRadius:0, tension:0.3, fill:true, yAxisID:'yH' }
-  ]},
-  options: {
-    responsive:true, maintainAspectRatio:false,
-    interaction:{ mode:'index', intersect:false },
-    plugins:{ legend:{ labels:{ color:'#94a3b8', boxWidth:12, font:{size:11} } }, tooltip:{ backgroundColor:'#1a2236', borderColor:'#1e3a5f', borderWidth:1, titleColor:'#e2e8f0', bodyColor:'#94a3b8' } },
-    scales:{
-      x:{ type:'time', time:{ unit:'minute', displayFormats:{minute:'HH:mm'} }, grid:{color:'#1e3a5f'}, ticks:{color:'#64748b', maxTicksLimit:6} },
-      yT:{ position:'left',  grid:{color:'#1e3a5f'}, ticks:{color:'#f97316', callback:v=>v+'°'} },
-      yH:{ position:'right', grid:{drawOnChartArea:false}, ticks:{color:'#38bdf8', callback:v=>v+'%'}, min:0, max:100 }
-    }
+// ── OPCIONES BASE CHARTS ──
+const baseOpts = {
+  responsive:true, maintainAspectRatio:false,
+  interaction:{ mode:'index', intersect:false },
+  plugins:{
+    legend:{ labels:{ color:'#94a3b8', boxWidth:12, font:{size:11} } },
+    tooltip:{ backgroundColor:'#1a2236', borderColor:'#1e3a5f', borderWidth:1, titleColor:'#e2e8f0', bodyColor:'#94a3b8' }
   }
+};
+const baseX = { type:'time', time:{ unit:'minute', displayFormats:{minute:'HH:mm'} }, grid:{color:'#1e3a5f'}, ticks:{color:'#64748b', maxTicksLimit:6} };
+
+// ── GRÁFICO TEMPERATURA ──
+const chartTemp = new Chart(document.getElementById('chart-temp').getContext('2d'), {
+  type: 'line',
+  data: { datasets: [{
+    label:'Temp (°C)', data:[], borderColor:'#f97316',
+    backgroundColor:'rgba(249,115,22,.1)', borderWidth:2,
+    pointRadius:0, tension:0.3, fill:true
+  }]},
+  options: { ...baseOpts, scales:{
+    x: baseX,
+    y:{ grid:{color:'#1e3a5f'}, ticks:{color:'#f97316', callback:v=>v+'°'} }
+  }}
+});
+
+// ── GRÁFICO HUMEDAD ──
+const chartHum = new Chart(document.getElementById('chart-hum').getContext('2d'), {
+  type: 'line',
+  data: { datasets: [{
+    label:'Humedad (%)', data:[], borderColor:'#38bdf8',
+    backgroundColor:'rgba(56,189,248,.1)', borderWidth:2,
+    pointRadius:0, tension:0.3, fill:true
+  }]},
+  options: { ...baseOpts, scales:{
+    x: baseX,
+    y:{ grid:{color:'#1e3a5f'}, ticks:{color:'#38bdf8', callback:v=>v+'%'}, min:0, max:100 }
+  }}
 });
 
 // ── GRÁFICO RELÉS (escalón) ──
@@ -368,8 +401,21 @@ function actualizarFase(fase, horas) {
     barWrap.style.display = 'none';
   }
 
-  const d = horas < 24 ? Math.round(horas) + 'hs' : Math.floor(horas/24) + 'd ' + (horas%24) + 'hs';
-  tiempo.textContent = d;
+  let tiempoStr;
+  if (horas < 1) {
+    const min = Math.round(horas * 60);
+    tiempoStr = min + ' min';
+  } else if (horas < 24) {
+    const h   = Math.floor(horas);
+    const min = Math.round((horas - h) * 60);
+    tiempoStr = h + 'hs ' + min + 'min';
+  } else {
+    const dias = Math.floor(horas / 24);
+    const h    = Math.floor(horas % 24);
+    const min  = Math.round(((horas % 24) - h) * 60);
+    tiempoStr  = dias + 'd ' + h + 'hs ' + min + 'min';
+  }
+  tiempo.textContent = tiempoStr;
 }
 
 async function avanzarFase() {
