@@ -363,7 +363,7 @@ db.ref('/datos/actual').on('value', snap => {
   document.getElementById('u-h-off').textContent = (sh-hh).toFixed(1);
 
   // Actualizar fase
-  if (d.fase) actualizarFase(d.fase, d.hFase || 0);
+  if (d.fase) actualizarFase(d.fase, d.hFase || 0);  // hFase en minutos
 
   setBadge('estufa',    d.e, 'e');
   setBadge('extractor', d.x, 'x');
@@ -374,7 +374,8 @@ db.ref('/datos/actual').on('value', snap => {
 // ── FASES ──
 const API = 'https://salame-api.onrender.com';
 
-function actualizarFase(fase, horas) {
+function actualizarFase(fase, minutos) {
+  const horas = minutos / 60;
   const card    = document.getElementById('fase-card');
   const nombre  = document.getElementById('fase-nombre');
   const sub     = document.getElementById('fase-sub');
@@ -390,7 +391,8 @@ function actualizarFase(fase, horas) {
     btn.textContent    = 'Pasar a Curado →';
     btn.className      = 'btn-fase';
     barWrap.style.display = 'block';
-    const p = Math.min(100, Math.round((horas / 48) * 100));
+    const f1h = 48;  // horas fase 1 por defecto
+    const p = Math.min(100, Math.round((horas / f1h) * 100));
     bar.style.width    = p + '%';
     pct.textContent    = p + '%';
   } else {
@@ -401,19 +403,16 @@ function actualizarFase(fase, horas) {
     barWrap.style.display = 'none';
   }
 
+  const min  = minutos % 60;
+  const h    = Math.floor(minutos / 60) % 24;
+  const dias = Math.floor(minutos / 1440);
   let tiempoStr;
-  if (horas < 1) {
-    const min = Math.round(horas * 60);
-    tiempoStr = min + ' min';
-  } else if (horas < 24) {
-    const h   = Math.floor(horas);
-    const min = Math.round((horas - h) * 60);
+  if (minutos < 60) {
+    tiempoStr = minutos + ' min';
+  } else if (minutos < 1440) {
     tiempoStr = h + 'hs ' + min + 'min';
   } else {
-    const dias = Math.floor(horas / 24);
-    const h    = Math.floor(horas % 24);
-    const min  = Math.round(((horas % 24) - h) * 60);
-    tiempoStr  = dias + 'd ' + h + 'hs ' + min + 'min';
+    tiempoStr = dias + 'd ' + h + 'hs ' + min + 'min';
   }
   tiempo.textContent = tiempoStr;
 }
