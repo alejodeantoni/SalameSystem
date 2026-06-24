@@ -113,7 +113,7 @@ main{max-width:960px;margin:0 auto;padding:20px 16px;display:grid;gap:14px}
     <div class="logo-icon">🥩</div>
     <div>
       <div>SalameSystem</div>
-      <div style="font-size:.6rem;font-weight:400;color:var(--muted);letter-spacing:.05em">v9.4 · Alejo De Antoni</div>
+      <div style="font-size:.6rem;font-weight:400;color:var(--muted);letter-spacing:.05em">v9.5 · Alejo De Antoni</div>
     </div>
   </div>
   <div class="pill">
@@ -430,39 +430,52 @@ function actualizarFase(fase, minutos) {
 }
 
 async function finalizarTanda() {
-  if (!confirm('¿Finalizar la tanda actual? Se guardará el resumen en el historial y se reseteará el sistema.')) return;
+  if (!confirm('¿Finalizar la tanda? Se guardará el resumen completo (Estufado + Curado) en el historial.')) return;
   try {
-    // Leer datos actuales para guardar el resumen
     const snap = await db.ref('/datos/actual').once('value');
     const d    = snap.val() || {};
-    const snapFase = await db.ref('/control').once('value');
-    const ctrl = snapFase.val() || {};
 
-    const ahora  = Math.floor(Date.now() / 1000);
-    const fecha  = new Date().toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit', year:'numeric'});
-    const hora   = new Date().toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'});
+    const ahora = Math.floor(Date.now() / 1000);
+    const fecha = new Date().toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit', year:'numeric'});
+    const hora  = new Date().toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'});
 
-    // Guardar fase actual en historial antes de resetear
-    await db.ref('/historial/fases/' + ahora).set({
-      fase:    d.fase   || 1,
-      nombre:  d.fase === 2 ? 'Curado (final)' : 'Estufado (final)',
-      durMin:  d.hFase  || 0,
-      tMin:    ctrl.tMinAcum  || d.t || 0,
-      tMax:    ctrl.tMaxAcum  || d.t || 0,
-      tProm:   d.t      || 0,
-      hMin:    ctrl.hMinAcum  || d.h || 0,
-      hMax:    ctrl.hMaxAcum  || d.h || 0,
-      hProm:   d.h      || 0,
-      ts:      ahora,
-      final:   true,
-      fechaFin: fecha + ' ' + hora
-    });
+    const durStr = min => {
+      if (!min) return '--';
+      if (min < 60)   return min + ' min';
+      if (min < 1440) return Math.floor(min/60) + 'hs ' + (min%60) + 'min';
+      return Math.floor(min/1440) + 'd ' + Math.floor((min%1440)/60) + 'hs';
+    };
 
-    // Resetear: volver a fase 1 y resetear tiempo
+    // Armar entrada completa de tanda
+    const tanda = {
+      ts:       ahora,
+      fecha:    fecha,
+      hora:     hora,
+      // Fase 1 — Estufado
+      f1DurMin:  d.f1DurMin  || 0,
+      f1TempMin: d.f1TempMin || 0,
+      f1TempMax: d.f1TempMax || 0,
+      f1TempProm:d.f1TempProm|| 0,
+      f1HumMin:  d.f1HumMin  || 0,
+      f1HumMax:  d.f1HumMax  || 0,
+      f1HumProm: d.f1HumProm || 0,
+      // Fase 2 — Curado (datos actuales si estamos en fase 2)
+      f2DurMin:  d.fase === 2 ? (d.hFase || 0) : 0,
+      f2TempMin: d.t || 0,
+      f2TempMax: d.t || 0,
+      f2TempProm:d.t || 0,
+      f2HumMin:  d.h || 0,
+      f2HumMax:  d.h || 0,
+      f2HumProm: d.h || 0,
+    };
+
+    await db.ref('/historial/tandas/' + ahora).set(tanda);
+
+    // Resetear sistema
     await db.ref('/control/fase').set(1);
     await db.ref('/control/resetTiempo').set(Date.now());
 
-    toast('Tanda finalizada y guardada en el historial ✓', 'ok');
+    toast('Tanda finalizada y guardada ✓', 'ok');
     setTimeout(() => cargarHistorialFases(), 1000);
   } catch(e) {
     toast('Error: ' + e.message, 'err');
@@ -488,6 +501,51 @@ async function avanzarFase() {
 
 // ── HISTORIAL DE FASES ──
 function cargarHistorialFases() {
+  // Cargar tandas completas
+  db.ref('/historial/tandas').orderByChild('ts').limitToLast(20).once('value', snap => {
+    if (!snap.exists()) return;
+    const tandas = [];
+    snap.forEach(child => tandas.unshift(child.val()));
+
+    const durStr = min => {
+      if (!min) return '--';
+      if (min < 60)   return min + ' min';
+      if (min < 1440) return Math.floor(min/60) + 'hs ' + (min%60) + 'min';
+      return Math.floor(min/1440) + 'd ' + Math.floor((min%1440)/60) + 'hs';
+    };
+
+    const tandaHTML = tandas.map(t => `
+      <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px">
+        <div style="background:var(--sur2);padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-weight:700;color:var(--text)">🥩 Tanda del ${t.fecha}</span>
+          <span style="font-size:.72rem;color:var(--muted)">Finalizada ${t.hora}hs</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+          <div style="padding:12px 14px;border-right:1px solid var(--border)">
+            <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--orange);margin-bottom:8px">Fase 1 — Estufado</div>
+            <div style="font-size:.78rem;display:grid;gap:4px">
+              <div>⏱ <b style="color:var(--text)">${durStr(t.f1DurMin)}</b></div>
+              <div>🌡 ${t.f1TempMin}° / ${t.f1TempMax}° · prom <b style="color:var(--orange)">${t.f1TempProm}°</b></div>
+              <div>💧 ${t.f1HumMin}% / ${t.f1HumMax}% · prom <b style="color:var(--blue)">${t.f1HumProm}%</b></div>
+            </div>
+          </div>
+          <div style="padding:12px 14px">
+            <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--blue);margin-bottom:8px">Fase 2 — Curado</div>
+            <div style="font-size:.78rem;display:grid;gap:4px">
+              <div>⏱ <b style="color:var(--text)">${durStr(t.f2DurMin)}</b></div>
+              <div>🌡 ${t.f2TempMin}° / ${t.f2TempMax}° · prom <b style="color:var(--orange)">${t.f2TempProm}°</b></div>
+              <div>💧 ${t.f2HumMin}% / ${t.f2HumMax}% · prom <b style="color:var(--blue)">${t.f2HumProm}%</b></div>
+            </div>
+          </div>
+        </div>
+      </div>`).join('');
+
+    const lista = document.getElementById('historial-lista');
+    if (tandas.length > 0) lista.innerHTML = tandaHTML;
+  });
+}
+
+function cargarHistorialFasesAntiguo() {
   db.ref('/historial/fases').orderByChild('ts').limitToLast(20).once('value', snap => {
     const lista = document.getElementById('historial-lista');
     if (!snap.exists()) { lista.innerHTML = '<div style="padding:12px 0;color:var(--muted)">Sin historial aún — se registra al cambiar de fase.</div>'; return; }
