@@ -113,7 +113,7 @@ main{max-width:960px;margin:0 auto;padding:20px 16px;display:grid;gap:14px}
     <div class="logo-icon">🥩</div>
     <div>
       <div>SalameSystem</div>
-      <div style="font-size:.6rem;font-weight:400;color:var(--muted);letter-spacing:.05em">v9.3 · Alejo De Antoni</div>
+      <div style="font-size:.6rem;font-weight:400;color:var(--muted);letter-spacing:.05em">v9.4 · Alejo De Antoni</div>
     </div>
   </div>
   <div class="pill">
@@ -161,7 +161,10 @@ main{max-width:960px;margin:0 auto;padding:20px 16px;display:grid;gap:14px}
           <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px">Tiempo en fase</div>
           <div style="font-family:var(--mono);font-size:1.1rem;font-weight:700;color:var(--accent)" id="fase-tiempo">--</div>
         </div>
-        <button class="btn-fase" id="btn-fase" onclick="avanzarFase()">Avanzar fase →</button>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <button class="btn-fase" id="btn-fase" onclick="avanzarFase()">Avanzar fase →</button>
+          <button onclick="finalizarTanda()" style="background:transparent;border:1px solid var(--good);color:var(--good);border-radius:8px;padding:6px 14px;font-size:.75rem;font-weight:700;cursor:pointer">✅ Finalizar tanda</button>
+        </div>
       </div>
     </div>
     <!-- Barra de progreso fase 1 -->
@@ -267,7 +270,7 @@ main{max-width:960px;margin:0 auto;padding:20px 16px;display:grid;gap:14px}
   <div class="chart-card" id="historial-fases">
     <div class="chart-header">
       <div class="chart-title">📋 Historial de fases</div>
-      <button onclick="resetearTiempo()" style="background:transparent;border:1px solid var(--warn);color:var(--warn);border-radius:6px;padding:3px 10px;font-size:.7rem;cursor:pointer">⏱ Resetear tiempo</button>
+      <button onclick="resetearTiempo()" style="background:transparent;border:1px solid var(--warn);color:var(--warn);border-radius:6px;padding:3px 10px;font-size:.7rem;cursor:pointer">↺ Reiniciar contador de fase</button>
     </div>
     <div id="historial-lista" style="font-size:.82rem;color:var(--muted)">Cargando...</div>
   </div>
@@ -424,6 +427,46 @@ function actualizarFase(fase, minutos) {
     tiempoStr = dias + 'd ' + h + 'hs ' + min + 'min';
   }
   tiempo.textContent = tiempoStr;
+}
+
+async function finalizarTanda() {
+  if (!confirm('¿Finalizar la tanda actual? Se guardará el resumen en el historial y se reseteará el sistema.')) return;
+  try {
+    // Leer datos actuales para guardar el resumen
+    const snap = await db.ref('/datos/actual').once('value');
+    const d    = snap.val() || {};
+    const snapFase = await db.ref('/control').once('value');
+    const ctrl = snapFase.val() || {};
+
+    const ahora  = Math.floor(Date.now() / 1000);
+    const fecha  = new Date().toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit', year:'numeric'});
+    const hora   = new Date().toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'});
+
+    // Guardar fase actual en historial antes de resetear
+    await db.ref('/historial/fases/' + ahora).set({
+      fase:    d.fase   || 1,
+      nombre:  d.fase === 2 ? 'Curado (final)' : 'Estufado (final)',
+      durMin:  d.hFase  || 0,
+      tMin:    ctrl.tMinAcum  || d.t || 0,
+      tMax:    ctrl.tMaxAcum  || d.t || 0,
+      tProm:   d.t      || 0,
+      hMin:    ctrl.hMinAcum  || d.h || 0,
+      hMax:    ctrl.hMaxAcum  || d.h || 0,
+      hProm:   d.h      || 0,
+      ts:      ahora,
+      final:   true,
+      fechaFin: fecha + ' ' + hora
+    });
+
+    // Resetear: volver a fase 1 y resetear tiempo
+    await db.ref('/control/fase').set(1);
+    await db.ref('/control/resetTiempo').set(Date.now());
+
+    toast('Tanda finalizada y guardada en el historial ✓', 'ok');
+    setTimeout(() => cargarHistorialFases(), 1000);
+  } catch(e) {
+    toast('Error: ' + e.message, 'err');
+  }
 }
 
 async function avanzarFase() {
