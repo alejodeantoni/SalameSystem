@@ -90,6 +90,10 @@ main{max-width:960px;margin:0 auto;padding:20px 16px;display:grid;gap:14px}
 .toast.ok{border-color:var(--good);color:var(--good)}
 .toast.err{border-color:var(--danger);color:var(--danger)}
 
+.fase-card::before{background:linear-gradient(90deg,var(--orange),var(--accent))}
+.btn-fase{background:linear-gradient(90deg,var(--orange),var(--accent));color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:.82rem;font-weight:700;cursor:pointer;white-space:nowrap}
+.btn-fase:hover{opacity:.85}
+.btn-fase.fase2{background:linear-gradient(90deg,var(--accent),var(--good))}
 @media(max-width:480px){.grid2{grid-template-columns:1fr}.card-value{font-size:2rem}}
 </style>
 </head>
@@ -128,6 +132,34 @@ main{max-width:960px;margin:0 auto;padding:20px 16px;display:grid;gap:14px}
         <span class="on-label">ON</span> &gt; <span id="u-h-on">--</span>%
         &nbsp;·&nbsp;
         <span class="off-label">OFF</span> &lt; <span id="u-h-off">--</span>%
+      </div>
+    </div>
+  </div>
+
+  <!-- FASES -->
+  <div class="card fase-card" id="fase-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div>
+        <div class="card-label">🥩 Fase activa</div>
+        <div style="font-size:1.4rem;font-weight:800" id="fase-nombre">--</div>
+        <div class="card-sub" id="fase-sub">--</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div style="text-align:center">
+          <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px">Tiempo en fase</div>
+          <div style="font-family:var(--mono);font-size:1.1rem;font-weight:700;color:var(--accent)" id="fase-tiempo">--</div>
+        </div>
+        <button class="btn-fase" id="btn-fase" onclick="avanzarFase()">Avanzar fase →</button>
+      </div>
+    </div>
+    <!-- Barra de progreso fase 1 -->
+    <div id="fase-progreso-wrap" style="margin-top:14px;display:none">
+      <div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--muted);margin-bottom:4px">
+        <span>Progreso estufado</span>
+        <span id="fase-pct">0%</span>
+      </div>
+      <div style="height:6px;background:var(--sur2);border-radius:3px;overflow:hidden">
+        <div id="fase-bar" style="height:100%;background:linear-gradient(90deg,var(--orange),var(--accent));border-radius:3px;width:0%;transition:width .5s"></div>
       </div>
     </div>
   </div>
@@ -258,11 +290,61 @@ db.ref('/datos/actual').on('value', snap => {
   document.getElementById('u-h-on').textContent  = (sh+hh).toFixed(1);
   document.getElementById('u-h-off').textContent = (sh-hh).toFixed(1);
 
+  // Actualizar fase
+  if (d.fase) actualizarFase(d.fase, d.hFase || 0);
+
   setBadge('estufa',    d.e, 'e');
   setBadge('extractor', d.x, 'x');
 
   ultimoTs = Date.now();
 });
+
+// ── FASES ──
+const API = 'https://salame-api.onrender.com';
+
+function actualizarFase(fase, horas) {
+  const card    = document.getElementById('fase-card');
+  const nombre  = document.getElementById('fase-nombre');
+  const sub     = document.getElementById('fase-sub');
+  const tiempo  = document.getElementById('fase-tiempo');
+  const btn     = document.getElementById('btn-fase');
+  const barWrap = document.getElementById('fase-progreso-wrap');
+  const bar     = document.getElementById('fase-bar');
+  const pct     = document.getElementById('fase-pct');
+
+  if (fase === 1) {
+    nombre.textContent = '1 — Estufado';
+    sub.textContent    = 'T=22°C · H=85% · duración 48hs';
+    btn.textContent    = 'Pasar a Curado →';
+    btn.className      = 'btn-fase';
+    barWrap.style.display = 'block';
+    const p = Math.min(100, Math.round((horas / 48) * 100));
+    bar.style.width    = p + '%';
+    pct.textContent    = p + '%';
+  } else {
+    nombre.textContent = '2 — Curado';
+    sub.textContent    = 'T=15°C · H=75%';
+    btn.textContent    = '← Volver a Estufado';
+    btn.className      = 'btn-fase fase2';
+    barWrap.style.display = 'none';
+  }
+
+  const d = horas < 24 ? Math.round(horas) + 'hs' : Math.floor(horas/24) + 'd ' + (horas%24) + 'hs';
+  tiempo.textContent = d;
+}
+
+async function avanzarFase() {
+  try {
+    const res  = await fetch(API + '/fase', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fase: 0 })  // la API calcula la siguiente
+    });
+    if (!res.ok) throw new Error('Error ' + res.status);
+  } catch(e) {
+    alert('No se pudo cambiar la fase: ' + e.message);
+  }
+}
 
 // ── STATUS EN VIVO ──
 function actualizarStatus() {
