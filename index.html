@@ -113,7 +113,7 @@ main{max-width:960px;margin:0 auto;padding:20px 16px;display:grid;gap:14px}
     <div class="logo-icon">🥩</div>
     <div>
       <div>SalameSystem</div>
-      <div style="font-size:.6rem;font-weight:400;color:var(--muted);letter-spacing:.05em">v9.0 · Alejo De Antoni</div>
+      <div style="font-size:.6rem;font-weight:400;color:var(--muted);letter-spacing:.05em">v9.3 · Alejo De Antoni</div>
     </div>
   </div>
   <div class="pill">
@@ -261,6 +261,15 @@ main{max-width:960px;margin:0 auto;padding:20px 16px;display:grid;gap:14px}
     </div>
 
     <button class="btn-guardar" onclick="guardarConfig()">💾 Guardar — el Wemos aplica en 30s</button>
+  </div>
+
+  <!-- HISTORIAL DE FASES -->
+  <div class="chart-card" id="historial-fases">
+    <div class="chart-header">
+      <div class="chart-title">📋 Historial de fases</div>
+      <button onclick="resetearTiempo()" style="background:transparent;border:1px solid var(--warn);color:var(--warn);border-radius:6px;padding:3px 10px;font-size:.7rem;cursor:pointer">⏱ Resetear tiempo</button>
+    </div>
+    <div id="historial-lista" style="font-size:.82rem;color:var(--muted)">Cargando...</div>
   </div>
 
   <!-- BOTÓN ABRIR CONFIG -->
@@ -433,6 +442,69 @@ async function avanzarFase() {
     toast('Error: ' + e.message, 'err');
   }
 }
+
+// ── HISTORIAL DE FASES ──
+function cargarHistorialFases() {
+  db.ref('/historial/fases').orderByChild('ts').limitToLast(20).once('value', snap => {
+    const lista = document.getElementById('historial-lista');
+    if (!snap.exists()) { lista.innerHTML = '<div style="padding:12px 0;color:var(--muted)">Sin historial aún — se registra al cambiar de fase.</div>'; return; }
+
+    const items = [];
+    snap.forEach(child => items.unshift(child.val()));
+
+    // Agrupar por tanda (día de inicio)
+    const tandas = {};
+    items.forEach(v => {
+      const fecha = new Date(v.ts * 1000);
+      const key   = fecha.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit', year:'numeric'});
+      if (!tandas[key]) tandas[key] = [];
+      tandas[key].push(v);
+    });
+
+    const durStr = min => min < 60
+      ? min + ' min'
+      : min < 1440
+        ? Math.floor(min/60) + 'hs ' + (min%60) + 'min'
+        : Math.floor(min/1440) + 'd ' + Math.floor((min%1440)/60) + 'hs ' + (min%60) + 'min';
+
+    lista.innerHTML = Object.entries(tandas).reverse().map(([fecha, fases]) => `
+      <div style="margin-bottom:16px">
+        <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)">
+          📅 Tanda del ${fecha}
+        </div>
+        ${fases.map(v => {
+          const color = v.fase === 1 ? 'var(--orange)' : 'var(--blue)';
+          const hora  = new Date(v.ts * 1000).toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'});
+          return `
+            <div style="border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px;border-left:3px solid ${color}">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                <span style="font-weight:700;color:${color}">Fase ${v.fase} — ${v.nombre}</span>
+                <span style="font-size:.7rem;color:var(--muted)">Inicio: ${hora}hs</span>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px;font-size:.75rem">
+                <div>⏱ Duración: <b style="color:var(--text)">${durStr(v.durMin)}</b></div>
+                <div>🌡 T mín/máx: <b style="color:var(--orange)">${v.tMin}° / ${v.tMax}°</b></div>
+                <div>🌡 T promedio: <b style="color:var(--orange)">${v.tProm}°</b></div>
+                <div>💧 H mín/máx: <b style="color:var(--blue)">${v.hMin}% / ${v.hMax}%</b></div>
+                <div>💧 H promedio: <b style="color:var(--blue)">${v.hProm}%</b></div>
+              </div>
+            </div>`;
+        }).join('')}
+      </div>`).join('');
+  });
+}
+
+async function resetearTiempo() {
+  if (!confirm('¿Resetear el contador de tiempo de la fase actual?')) return;
+  try {
+    await db.ref('/control/resetTiempo').set(Date.now());
+    toast('Tiempo de fase reseteado ✓', 'ok');
+  } catch(e) {
+    toast('Error: ' + e.message, 'err');
+  }
+}
+
+cargarHistorialFases();
 
 // ── CONFIGURACIÓN ──
 function abrirConfig() {
