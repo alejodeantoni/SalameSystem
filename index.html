@@ -17,6 +17,7 @@
   --accent:  #0ea5e9;
   --good:    #22d3a0;
   --danger:  #f87171;
+  --warn:    #fbbf24;
   --text:    #e2e8f0;
   --muted:   #64748b;
   --orange:  #f97316;
@@ -33,6 +34,8 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
 .pill{display:flex;align-items:center;gap:6px;font-size:.72rem;color:var(--muted);background:var(--sur2);padding:4px 10px;border-radius:20px;border:1px solid var(--border)}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--muted);transition:background .4s}
 .dot.on{background:var(--good);box-shadow:0 0 6px var(--good);animation:pulse 2s infinite}
+.dot.warn{background:var(--warn);box-shadow:0 0 6px var(--warn);animation:pulse 1s infinite}
+.dot.off{background:var(--danger)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
 
 /* LAYOUT */
@@ -196,6 +199,8 @@ firebase.initializeApp({
 const db = firebase.database();
 
 let rangoMin = 30;
+let ultimoTs  = 0;
+let timerStatus;
 
 // ── GRÁFICO TEMP/HUM ──
 const chartTH = new Chart(document.getElementById('chart-th').getContext('2d'), {
@@ -256,9 +261,34 @@ db.ref('/datos/actual').on('value', snap => {
   setBadge('estufa',    d.e, 'e');
   setBadge('extractor', d.x, 'x');
 
-  document.getElementById('dot').className = 'dot on';
-  document.getElementById('status-text').textContent = 'En vivo';
+  ultimoTs = Date.now();
+  actualizarStatus();
 });
+
+// ── STATUS EN VIVO ──
+function actualizarStatus() {
+  clearInterval(timerStatus);
+  timerStatus = setInterval(() => {
+    const seg = Math.floor((Date.now() - ultimoTs) / 1000);
+    const dot  = document.getElementById('dot');
+    const txt  = document.getElementById('status-text');
+
+    if (seg < 20) {
+      dot.className = 'dot on';
+      txt.textContent = 'En vivo · hace ' + seg + 's';
+    } else if (seg < 60) {
+      dot.className = 'dot warn';
+      txt.textContent = 'Hace ' + seg + 's';
+    } else if (seg < 3600) {
+      dot.className = 'dot off';
+      const min = Math.floor(seg / 60);
+      txt.textContent = '⚠️ Sin datos hace ' + min + 'min';
+    } else {
+      dot.className = 'dot off';
+      txt.textContent = '❌ Wemos desconectado';
+    }
+  }, 1000);
+}
 
 // ── HISTÓRICO ──
 function setRango(min, btn) {
@@ -325,10 +355,7 @@ function toast(msg, type) {
   toastT = setTimeout(() => el.classList.remove('show'), 3000);
 }
 
-setTimeout(() => {
-  if (!document.getElementById('dot').classList.contains('on'))
-    document.getElementById('status-text').textContent = 'Sin datos';
-}, 10000);
+
 </script>
 </body>
 </html>
