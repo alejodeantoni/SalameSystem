@@ -262,7 +262,6 @@ db.ref('/datos/actual').on('value', snap => {
   setBadge('extractor', d.x, 'x');
 
   ultimoTs = Date.now();
-  actualizarStatus();
 });
 
 // ── STATUS EN VIVO ──
@@ -336,6 +335,10 @@ function cargarHistorico() {
 
 cargarHistorico();
 setInterval(cargarHistorico, 30000);
+
+// Arrancar status timer desde el inicio
+ultimoTs = Date.now();
+actualizarStatus();
 
 // ── UI HELPERS ──
 function setBadge(id, on, tipo) {
