@@ -539,9 +539,10 @@ function cargarHistorico() {
 
       arr.sort((a, b) => a.x - b.x);
 
-      chartTH.data.datasets[0].data = arr.map(v => ({ x: v.x, y: v.temp }));
-      chartTH.data.datasets[1].data = arr.map(v => ({ x: v.x, y: v.hum  }));
-      chartTH.update('none');
+      chartTemp.data.datasets[0].data = arr.map(v => ({ x: v.x, y: v.temp }));
+      chartTemp.update('none');
+      chartHum.data.datasets[0].data = arr.map(v => ({ x: v.x, y: v.hum }));
+      chartHum.update('none');
 
       chartReles.data.datasets[0].data = arr.map(v => ({ x: v.x, y: v.e  }));
       chartReles.data.datasets[1].data = arr.map(v => ({ x: v.x, y: v.x2 }));
