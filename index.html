@@ -269,32 +269,39 @@ function setRango(min, btn) {
 }
 
 function cargarHistorico() {
-  const limite = Math.ceil(rangoMin * 6) + 10; // cada 10s → 6 por minuto
-  db.ref('/datos/historico').limitToLast(limite).once('value', snap => {
-    const arr = [];
-    snap.forEach(child => {
-      const v = child.val();
-      arr.push({
-        ts:   v.ts   || 0,
-        temp: v.t    != null ? +v.t : 0,
-        hum:  v.h    != null ? +v.h : 0,
-        e:    v.e    ? 1 : 0,
-        x:    v.x    ? 1 : 0,
+  const ahora    = Math.floor(Date.now() / 1000);
+  const desdeTs  = ahora - rangoMin * 60;
+
+  db.ref('/datos/historico')
+    .orderByChild('ts')
+    .startAt(desdeTs)
+    .once('value', snap => {
+      const arr = [];
+      snap.forEach(child => {
+        const v = child.val();
+        if (!v.ts) return;
+        arr.push({
+          x: v.ts * 1000,  // convertir a ms para Chart.js
+          temp: v.t != null ? +v.t : 0,
+          hum:  v.h != null ? +v.h : 0,
+          e:    v.e ? 1 : 0,
+          x2:   v.x ? 1 : 0,
+        });
       });
+
+      arr.sort((a, b) => a.x - b.x);
+
+      chartTH.data.datasets[0].data = arr.map(v => ({ x: v.x, y: v.temp }));
+      chartTH.data.datasets[1].data = arr.map(v => ({ x: v.x, y: v.hum  }));
+      chartTH.update('none');
+
+      chartReles.data.datasets[0].data = arr.map(v => ({ x: v.x, y: v.e  }));
+      chartReles.data.datasets[1].data = arr.map(v => ({ x: v.x, y: v.x2 }));
+      chartReles.update('none');
+
+      document.getElementById('status-text').textContent =
+        arr.length > 0 ? 'En vivo' : 'Sin datos en este rango';
     });
-
-    // Reconstruir timestamps reales desde el último punto
-    const now = Date.now();
-    const total = arr.length;
-
-    chartTH.data.datasets[0].data = arr.map((v,i) => ({ x: now-(total-i)*10000, y: v.temp }));
-    chartTH.data.datasets[1].data = arr.map((v,i) => ({ x: now-(total-i)*10000, y: v.hum  }));
-    chartTH.update('none');
-
-    chartReles.data.datasets[0].data = arr.map((v,i) => ({ x: now-(total-i)*10000, y: v.e }));
-    chartReles.data.datasets[1].data = arr.map((v,i) => ({ x: now-(total-i)*10000, y: v.x }));
-    chartReles.update('none');
-  });
 }
 
 cargarHistorico();
