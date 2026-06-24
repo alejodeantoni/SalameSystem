@@ -272,6 +272,11 @@ function actualizarStatus() {
     const dot  = document.getElementById('dot');
     const txt  = document.getElementById('status-text');
 
+    if (ultimoTs === 0) {
+      dot.className = 'dot';
+      txt.textContent = 'Esperando datos…';
+      return;
+    }
     if (seg < 20) {
       dot.className = 'dot on';
       txt.textContent = 'En vivo · hace ' + seg + 's';
@@ -336,8 +341,7 @@ function cargarHistorico() {
 cargarHistorico();
 setInterval(cargarHistorico, 30000);
 
-// Arrancar status timer desde el inicio
-ultimoTs = Date.now();
+// Arrancar status timer desde el inicio (ultimoTs=0 → sin datos)
 actualizarStatus();
 
 // ── UI HELPERS ──
