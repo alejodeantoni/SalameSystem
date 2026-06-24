@@ -94,6 +94,15 @@ main{max-width:960px;margin:0 auto;padding:20px 16px;display:grid;gap:14px}
 .btn-fase{background:linear-gradient(90deg,var(--orange),var(--accent));color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:.82rem;font-weight:700;cursor:pointer;white-space:nowrap}
 .btn-fase:hover{opacity:.85}
 .btn-fase.fase2{background:linear-gradient(90deg,var(--accent),var(--good))}
+.section-label{font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);margin-bottom:10px}
+.cfg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.cfg-field label{display:block;font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px}
+.cfg-field input{width:100%;background:var(--sur2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 10px;font-family:var(--mono);font-size:.9rem}
+.cfg-field input:focus{outline:none;border-color:var(--accent)}
+.btn-guardar{width:100%;margin-top:16px;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer}
+.btn-guardar:hover{background:#0284c7}
+.btn-cfg-open{display:block;width:100%;max-width:960px;margin:0 auto 20px;padding:10px;background:var(--sur2);border:1px solid var(--border);color:var(--muted);border-radius:8px;font-size:.85rem;cursor:pointer}
+.btn-cfg-open:hover{border-color:var(--accent);color:var(--accent)}
 @media(max-width:480px){.grid2{grid-template-columns:1fr}.card-value{font-size:2rem}}
 </style>
 </head>
@@ -213,6 +222,36 @@ main{max-width:960px;margin:0 auto;padding:20px 16px;display:grid;gap:14px}
     <span>IP del controlador</span>
     <span class="ip-val" id="ip-val">--</span>
   </div>
+
+  <!-- CONFIG -->
+  <div class="card" id="config-card" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div class="card-label" style="margin:0">⚙️ Configuración de fases</div>
+      <button onclick="cerrarConfig()" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer">✕</button>
+    </div>
+
+    <div class="section-label">Fase 1 — Estufado</div>
+    <div class="cfg-grid">
+      <div class="cfg-field"><label>Temp (°C)</label><input type="number" id="f1Temp" step="0.5"></div>
+      <div class="cfg-field"><label>Histéresis T (°C)</label><input type="number" id="f1HistTemp" step="0.5"></div>
+      <div class="cfg-field"><label>Humedad (%)</label><input type="number" id="f1Hum" step="1"></div>
+      <div class="cfg-field"><label>Histéresis H (%)</label><input type="number" id="f1HistHum" step="0.5"></div>
+      <div class="cfg-field"><label>Duración (horas)</label><input type="number" id="f1Horas" step="1" min="1"></div>
+    </div>
+
+    <div class="section-label" style="margin-top:16px">Fase 2 — Curado</div>
+    <div class="cfg-grid">
+      <div class="cfg-field"><label>Temp (°C)</label><input type="number" id="f2Temp" step="0.5"></div>
+      <div class="cfg-field"><label>Histéresis T (°C)</label><input type="number" id="f2HistTemp" step="0.5"></div>
+      <div class="cfg-field"><label>Humedad (%)</label><input type="number" id="f2Hum" step="1"></div>
+      <div class="cfg-field"><label>Histéresis H (%)</label><input type="number" id="f2HistHum" step="0.5"></div>
+    </div>
+
+    <button class="btn-guardar" onclick="guardarConfig()">💾 Guardar — el Wemos aplica en 30s</button>
+  </div>
+
+  <!-- BOTÓN ABRIR CONFIG -->
+  <button class="btn-cfg-open" onclick="abrirConfig()">⚙️ Configurar setpoints</button>
 
 </main>
 
@@ -345,6 +384,49 @@ async function avanzarFase() {
     // Escribir directo en Firebase — el Wemos lo lee en 30s
     await db.ref('/control/fase').set(nuevaFase);
     toast('Fase ' + nuevaFase + ' activada — el controlador actualiza en 30s', 'ok');
+  } catch(e) {
+    toast('Error: ' + e.message, 'err');
+  }
+}
+
+// ── CONFIGURACIÓN ──
+function abrirConfig() {
+  // Cargar valores actuales desde Firebase
+  db.ref('/control').once('value', snap => {
+    const d = snap.val() || {};
+    document.getElementById('f1Temp').value     = d.f1Temp     || 22;
+    document.getElementById('f1HistTemp').value = d.f1HistTemp || 1;
+    document.getElementById('f1Hum').value      = d.f1Hum      || 85;
+    document.getElementById('f1HistHum').value  = d.f1HistHum  || 3;
+    document.getElementById('f1Horas').value    = d.f1Horas    || 48;
+    document.getElementById('f2Temp').value     = d.f2Temp     || 15;
+    document.getElementById('f2HistTemp').value = d.f2HistTemp || 1;
+    document.getElementById('f2Hum').value      = d.f2Hum      || 75;
+    document.getElementById('f2HistHum').value  = d.f2HistHum  || 3;
+  });
+  document.getElementById('config-card').style.display = 'block';
+}
+
+function cerrarConfig() {
+  document.getElementById('config-card').style.display = 'none';
+}
+
+async function guardarConfig() {
+  const config = {
+    f1Temp:     +document.getElementById('f1Temp').value,
+    f1HistTemp: +document.getElementById('f1HistTemp').value,
+    f1Hum:      +document.getElementById('f1Hum').value,
+    f1HistHum:  +document.getElementById('f1HistHum').value,
+    f1Horas:    +document.getElementById('f1Horas').value,
+    f2Temp:     +document.getElementById('f2Temp').value,
+    f2HistTemp: +document.getElementById('f2HistTemp').value,
+    f2Hum:      +document.getElementById('f2Hum').value,
+    f2HistHum:  +document.getElementById('f2HistHum').value,
+  };
+  try {
+    await db.ref('/control').update(config);
+    toast('Config guardada — el Wemos aplica en 30s ✓', 'ok');
+    cerrarConfig();
   } catch(e) {
     toast('Error: ' + e.message, 'err');
   }
