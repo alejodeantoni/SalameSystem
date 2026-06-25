@@ -113,7 +113,7 @@ main{max-width:960px;margin:0 auto;padding:20px 16px;display:grid;gap:14px}
     <div class="logo-icon">🥩</div>
     <div>
       <div>SalameSystem</div>
-      <div style="font-size:.6rem;font-weight:400;color:var(--muted);letter-spacing:.05em">v9.9 · Alejo De Antoni</div>
+      <div style="font-size:.6rem;font-weight:400;color:var(--muted);letter-spacing:.05em">v10.0 · Alejo De Antoni</div>
     </div>
   </div>
   <div class="pill">
@@ -164,6 +164,7 @@ main{max-width:960px;margin:0 auto;padding:20px 16px;display:grid;gap:14px}
         <div style="display:flex;flex-direction:column;gap:6px">
           <button class="btn-fase" id="btn-fase" onclick="avanzarFase()">Avanzar fase →</button>
           <button onclick="finalizarTanda()" style="background:transparent;border:1px solid var(--good);color:var(--good);border-radius:8px;padding:6px 14px;font-size:.75rem;font-weight:700;cursor:pointer">✅ Finalizar tanda</button>
+          <button onclick="resetearTiempo()" style="background:transparent;border:1px solid var(--warn);color:var(--warn);border-radius:8px;padding:6px 14px;font-size:.75rem;font-weight:700;cursor:pointer">↺ Reiniciar contador</button>
         </div>
       </div>
     </div>
@@ -270,7 +271,6 @@ main{max-width:960px;margin:0 auto;padding:20px 16px;display:grid;gap:14px}
   <div class="chart-card" id="historial-fases">
     <div class="chart-header">
       <div class="chart-title">📋 Historial de fases</div>
-      <button onclick="resetearTiempo()" style="background:transparent;border:1px solid var(--warn);color:var(--warn);border-radius:6px;padding:3px 10px;font-size:.7rem;cursor:pointer">↺ Reiniciar contador de fase</button>
     </div>
     <div id="historial-lista" style="font-size:.82rem;color:var(--muted)">Cargando...</div>
   </div>
@@ -452,6 +452,17 @@ function actualizarFase(fase, minutos, f1Horas) {
   tiempo.textContent = tiempoStr;
 }
 
+async function borrarTanda(ts) {
+  if (!confirm('¿Eliminar esta tanda del historial?')) return;
+  try {
+    await db.ref('/historial/tandas/' + ts).remove();
+    toast('Tanda eliminada ✓', 'ok');
+    cargarHistorialFases();
+  } catch(e) {
+    toast('Error: ' + e.message, 'err');
+  }
+}
+
 async function finalizarTanda() {
   if (!confirm('¿Finalizar la tanda? Se guardará el resumen completo (Estufado + Curado) en el historial.')) return;
   try {
@@ -541,7 +552,10 @@ function cargarHistorialFases() {
       <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px">
         <div style="background:var(--sur2);padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
           <span style="font-weight:700;color:var(--text)">🥩 Tanda del ${t.fecha}</span>
-          <span style="font-size:.72rem;color:var(--muted)">Finalizada ${t.hora}hs</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:.72rem;color:var(--muted)">Finalizada ${t.hora}hs</span>
+            <button onclick="borrarTanda(${t.ts})" style="background:transparent;border:1px solid var(--danger);color:var(--danger);border-radius:5px;padding:2px 8px;font-size:.68rem;cursor:pointer">🗑</button>
+          </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
           <div style="padding:12px 14px;border-right:1px solid var(--border)">
