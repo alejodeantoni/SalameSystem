@@ -113,7 +113,7 @@ main{max-width:960px;margin:0 auto;padding:20px 16px;display:grid;gap:14px}
     <div class="logo-icon">🥩</div>
     <div>
       <div>SalameSystem</div>
-      <div style="font-size:.6rem;font-weight:400;color:var(--muted);letter-spacing:.05em">v9.5 · Alejo De Antoni</div>
+      <div style="font-size:.6rem;font-weight:400;color:var(--muted);letter-spacing:.05em">v9.6 · Alejo De Antoni</div>
     </div>
   </div>
   <div class="pill">
@@ -355,6 +355,11 @@ const chartReles = new Chart(document.getElementById('chart-reles').getContext('
   }
 });
 
+// Cargar config desde Firebase para tenerla disponible
+db.ref('/control').on('value', snap => {
+  window._cfg = snap.val() || {};
+});
+
 // ── DATOS EN TIEMPO REAL ──
 db.ref('/datos/actual').on('value', snap => {
   const d = snap.val();
@@ -375,7 +380,7 @@ db.ref('/datos/actual').on('value', snap => {
   document.getElementById('u-h-off').textContent = (sh-hh).toFixed(1);
 
   // Actualizar fase
-  if (d.fase) actualizarFase(d.fase, d.hFase || 0);  // hFase en minutos
+  if (d.fase) actualizarFase(d.fase, d.hFase || 0, window._cfg?.f1Horas || 48);
 
   setBadge('estufa',    d.e, 'e');
   setBadge('extractor', d.x, 'x');
@@ -386,8 +391,9 @@ db.ref('/datos/actual').on('value', snap => {
 // ── FASES ──
 const API = 'https://salame-api.onrender.com';
 
-function actualizarFase(fase, minutos) {
-  const horas = minutos / 60;
+function actualizarFase(fase, minutos, f1Horas) {
+  const horas    = minutos / 60;
+  const durTotal = f1Horas || 48;  // horas totales de estufado
   const card    = document.getElementById('fase-card');
   const nombre  = document.getElementById('fase-nombre');
   const sub     = document.getElementById('fase-sub');
@@ -399,12 +405,11 @@ function actualizarFase(fase, minutos) {
 
   if (fase === 1) {
     nombre.textContent = '1 — Estufado';
-    sub.textContent    = 'T=22°C · H=85% · duración 48hs';
+    sub.textContent    = 'T=' + (window._cfg?.f1Temp||22) + '°C · H=' + (window._cfg?.f1Hum||85) + '% · duración ' + durTotal + 'hs';
     btn.textContent    = 'Pasar a Curado →';
     btn.className      = 'btn-fase';
     barWrap.style.display = 'block';
-    const f1h = 48;  // horas fase 1 por defecto
-    const p = Math.min(100, Math.round((horas / f1h) * 100));
+    const p = Math.min(100, Math.round((minutos / (durTotal * 60)) * 100));
     bar.style.width    = p + '%';
     pct.textContent    = p + '%';
   } else {
