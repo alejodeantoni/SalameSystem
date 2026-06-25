@@ -113,7 +113,7 @@ main{max-width:960px;margin:0 auto;padding:20px 16px;display:grid;gap:14px}
     <div class="logo-icon">🥩</div>
     <div>
       <div>SalameSystem</div>
-      <div style="font-size:.6rem;font-weight:400;color:var(--muted);letter-spacing:.05em">v9.6 · Alejo De Antoni</div>
+      <div style="font-size:.6rem;font-weight:400;color:var(--muted);letter-spacing:.05em">v9.8 · Alejo De Antoni</div>
     </div>
   </div>
   <div class="pill">
@@ -294,9 +294,12 @@ firebase.initializeApp({
 });
 const db = firebase.database();
 
-let rangoMin = 30;
-let ultimoTs  = 0;
+let rangoMin   = 30;
+let ultimoTs   = 0;
 let timerStatus;
+let minFaseBase   = 0;   // minutos al momento del último dato
+let tsUltimodato  = 0;   // timestamp local cuando llegó el último dato
+let timerFase;
 
 // ── OPCIONES BASE CHARTS ──
 const baseOpts = {
@@ -380,12 +383,23 @@ db.ref('/datos/actual').on('value', snap => {
   document.getElementById('u-h-off').textContent = (sh-hh).toFixed(1);
 
   // Actualizar fase
-  if (d.fase) actualizarFase(d.fase, d.hFase || 0, window._cfg?.f1Horas || 48);
+  window._faseActual = d.fase;
+  // Calcular minutos reales desde faseInicioTs del servidor
+  const ahora    = Math.floor(Date.now() / 1000);
+  const tsServidor = d.ts || ahora;
+  const faseInicioTs = window._cfg?.faseInicioTs || tsServidor;
+  const minReales = Math.floor((ahora - faseInicioTs) / 60);
+  minFaseBase  = minReales > 0 ? minReales : (d.hFase || 0);
+  tsUltimodato = Date.now();
+  if (d.fase) actualizarFase(d.fase, minFaseBase, window._cfg?.f1Horas || 48);
 
   setBadge('estufa',    d.e, 'e');
   setBadge('extractor', d.x, 'x');
 
-  ultimoTs = Date.now();
+  ultimoTs     = Date.now();
+  minFaseBase  = d.hFase || 0;
+  tsUltimodato = Date.now();
+  actualizarContadorFase();
 });
 
 // ── FASES ──
@@ -603,7 +617,10 @@ function cargarHistorialFasesAntiguo() {
 async function resetearTiempo() {
   if (!confirm('¿Resetear el contador de tiempo de la fase actual?')) return;
   try {
-    await db.ref('/control/resetTiempo').set(Date.now());
+    // Mandar en segundos para que el ESP8266 pueda procesarlo
+    await db.ref('/control/resetTiempo').set(Math.floor(Date.now() / 1000));
+    minFaseBase  = 0;
+    tsUltimodato = Date.now();
     toast('Tiempo de fase reseteado ✓', 'ok');
   } catch(e) {
     toast('Error: ' + e.message, 'err');
@@ -653,6 +670,42 @@ async function guardarConfig() {
   } catch(e) {
     toast('Error: ' + e.message, 'err');
   }
+}
+
+// ── CONTADOR LOCAL DE FASE ──
+function actualizarContadorFase() {
+  clearInterval(timerFase);
+  timerFase = setInterval(() => {
+    if (!tsUltimodato) return;
+    const segTranscurridos = Math.floor((Date.now() - tsUltimodato) / 1000);
+    const minActual = minFaseBase + Math.floor(segTranscurridos / 60);
+    const segExtra  = segTranscurridos % 60;
+
+    // Actualizar display con segundos también
+    const tiempo = document.getElementById('fase-tiempo');
+    if (!tiempo) return;
+    const h   = Math.floor(minActual / 60);
+    const min = minActual % 60;
+    const seg = segExtra;
+    if (minActual < 60) {
+      tiempo.textContent = minActual + 'min ' + seg + 's';
+    } else if (minActual < 1440) {
+      tiempo.textContent = h + 'hs ' + min + 'min ' + seg + 's';
+    } else {
+      const dias = Math.floor(minActual / 1440);
+      tiempo.textContent = dias + 'd ' + Math.floor((minActual%1440)/60) + 'hs ' + (minActual%60) + 'min';
+    }
+
+    // Actualizar barra de progreso
+    const durTotal = (window._cfg?.f1Horas || 48) * 60;
+    const pct = document.getElementById('fase-pct');
+    const bar = document.getElementById('fase-bar');
+    if (pct && bar && window._faseActual === 1) {
+      const p = Math.min(100, Math.round((minActual / durTotal) * 100));
+      pct.textContent = p + '%';
+      bar.style.width = p + '%';
+    }
+  }, 1000);
 }
 
 // ── STATUS EN VIVO ──
