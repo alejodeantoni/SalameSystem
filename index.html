@@ -113,7 +113,7 @@ main{max-width:960px;margin:0 auto;padding:20px 16px;display:grid;gap:14px}
     <div class="logo-icon">🥩</div>
     <div>
       <div>SalameSystem</div>
-      <div style="font-size:.6rem;font-weight:400;color:var(--muted);letter-spacing:.05em">v9.8 · Alejo De Antoni</div>
+      <div style="font-size:.6rem;font-weight:400;color:var(--muted);letter-spacing:.05em">v9.9 · Alejo De Antoni</div>
     </div>
   </div>
   <div class="pill">
@@ -384,12 +384,16 @@ db.ref('/datos/actual').on('value', snap => {
 
   // Actualizar fase
   window._faseActual = d.fase;
-  // Calcular minutos reales desde faseInicioTs del servidor
-  const ahora    = Math.floor(Date.now() / 1000);
-  const tsServidor = d.ts || ahora;
-  const faseInicioTs = window._cfg?.faseInicioTs || tsServidor;
-  const minReales = Math.floor((ahora - faseInicioTs) / 60);
-  minFaseBase  = minReales > 0 ? minReales : (d.hFase || 0);
+  // faseInicioTs guardado en /control por el Wemos
+  const faseInicioTs = window._cfg?.faseInicioTs || 0;
+  const ahoraUnix    = Math.floor(Date.now() / 1000);
+  let minReales;
+  if (faseInicioTs > 0) {
+    minReales = Math.floor((ahoraUnix - faseInicioTs) / 60);
+  } else {
+    minReales = d.hFase || 0;
+  }
+  minFaseBase  = Math.max(0, minReales);
   tsUltimodato = Date.now();
   if (d.fase) actualizarFase(d.fase, minFaseBase, window._cfg?.f1Horas || 48);
 
