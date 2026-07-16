@@ -107,6 +107,10 @@ main{max-width:960px;margin:0 auto;padding:20px 16px;display:grid;gap:14px}
 .cfg-field input:focus{outline:none;border-color:var(--accent)}
 .btn-guardar{width:100%;margin-top:16px;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer}
 .btn-guardar:hover{background:#0284c7}
+.btn-man{flex:1;padding:7px;border:none;border-radius:6px;font-size:.8rem;font-weight:700;cursor:pointer}
+.btn-man.on-e{background:rgba(249,115,22,.2);color:var(--orange);border:1px solid var(--orange)}
+.btn-man.on-x{background:rgba(56,189,248,.2);color:var(--blue);border:1px solid var(--blue)}
+.btn-man.off{background:var(--surface);color:var(--muted);border:1px solid var(--border)}
 .btn-cfg-open{display:block;width:100%;max-width:960px;margin:0 auto 20px;padding:10px;background:var(--sur2);border:1px solid var(--border);color:var(--muted);border-radius:8px;font-size:.85rem;cursor:pointer}
 .btn-cfg-open:hover{border-color:var(--accent);color:var(--accent)}
 @media(max-width:480px){.grid2{grid-template-columns:1fr}.card-value{font-size:2rem}}
@@ -119,7 +123,7 @@ main{max-width:960px;margin:0 auto;padding:20px 16px;display:grid;gap:14px}
     <div class="logo-icon">🥩</div>
     <div>
       <div>SalameSystem</div>
-      <div style="font-size:.6rem;font-weight:400;color:var(--muted);letter-spacing:.05em">v10.1 · Alejo De Antoni</div>
+      <div style="font-size:.6rem;font-weight:400;color:var(--muted);letter-spacing:.05em">v10.2 · Alejo De Antoni</div>
     </div>
   </div>
   <div class="pill">
@@ -205,6 +209,39 @@ main{max-width:960px;margin:0 auto;padding:20px 16px;display:grid;gap:14px}
         </div>
         <div class="badge" id="badge-extractor">OFF</div>
       </div>
+    </div>
+  </div>
+
+  <!-- CONTROL MANUAL -->
+  <div class="card" style="border-color:var(--border)">
+    <div class="card-label" style="margin-bottom:14px">🎛️ Control manual</div>
+    <div class="grid2">
+
+      <div style="background:var(--sur2);border-radius:10px;padding:14px">
+        <div style="font-weight:700;margin-bottom:10px">🔥 Estufa</div>
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <button onclick="manualRele('estufa', true)"  class="btn-man on-e">Encender</button>
+          <button onclick="manualRele('estufa', false)" class="btn-man off">Apagar</button>
+        </div>
+        <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">Timer (minutos, 0 = sin límite)</div>
+        <input type="number" id="timer-estufa" value="0" min="0" max="9999"
+          style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;font-family:var(--mono)">
+      </div>
+
+      <div style="background:var(--sur2);border-radius:10px;padding:14px">
+        <div style="font-weight:700;margin-bottom:10px">💨 Extractor</div>
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <button onclick="manualRele('extractor', true)"  class="btn-man on-x">Encender</button>
+          <button onclick="manualRele('extractor', false)" class="btn-man off">Apagar</button>
+        </div>
+        <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">Timer (minutos, 0 = sin límite)</div>
+        <input type="number" id="timer-extractor" value="0" min="0" max="9999"
+          style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;font-family:var(--mono)">
+      </div>
+
+    </div>
+    <div style="font-size:.72rem;color:var(--muted);margin-top:10px">
+      ⚠️ El control manual se desactiva solo cuando termina el timer o al apagar manualmente.
     </div>
   </div>
 
@@ -456,6 +493,24 @@ function actualizarFase(fase, minutos, f1Horas) {
     tiempoStr = dias + 'd ' + h + 'hs ' + min + 'min';
   }
   tiempo.textContent = tiempoStr;
+}
+
+async function manualRele(rele, estado) {
+  const timerMin = parseInt(document.getElementById('timer-' + rele).value) || 0;
+  const apagaTs  = timerMin > 0 ? Math.floor(Date.now()/1000) + timerMin * 60 : 0;
+  try {
+    await db.ref('/control/manual/' + rele).set({
+      estado:  estado,
+      timer:   timerMin,
+      apagaTs: apagaTs
+    });
+    const msg = estado
+      ? (timerMin > 0 ? rele + ' encendido por ' + timerMin + 'min ✓' : rele + ' encendido ✓')
+      : rele + ' apagado ✓';
+    toast(msg, 'ok');
+  } catch(e) {
+    toast('Error: ' + e.message, 'err');
+  }
 }
 
 async function borrarTanda(ts) {
