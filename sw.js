@@ -1,4 +1,4 @@
-const CACHE = 'salamesystem-v10';
+const CACHE = 'salamesystem-v10.2';
 const ASSETS = [
   '/SalameSystem/',
   '/SalameSystem/index.html',
