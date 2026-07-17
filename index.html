@@ -247,10 +247,10 @@ main{max-width:960px;margin:0 auto;padding:20px 16px;display:grid;gap:14px}
 
   <!-- SELECTOR DE RANGO (compartido) -->
   <div style="display:flex;justify-content:flex-end;gap:4px">
-    <button class="tab active" data-r="30"   onclick="setRango(30,this)">30m</button>
+    <button class="tab"        data-r="30"   onclick="setRango(30,this)">30m</button>
     <button class="tab"        data-r="60"   onclick="setRango(60,this)">1h</button>
     <button class="tab"        data-r="360"  onclick="setRango(360,this)">6h</button>
-    <button class="tab"        data-r="1440" onclick="setRango(1440,this)">24h</button>
+    <button class="tab active" data-r="1440" onclick="setRango(1440,this)">24h</button>
   </div>
 
   <!-- GRÁFICO TEMPERATURA -->
@@ -337,7 +337,7 @@ firebase.initializeApp({
 });
 const db = firebase.database();
 
-let rangoMin   = 30;
+let rangoMin   = 1440;
 let ultimoTs   = 0;
 let timerStatus;
 let minFaseBase   = 0;   // minutos al momento del último dato
